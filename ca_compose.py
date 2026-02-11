@@ -248,38 +248,39 @@ def visualize_grid(grid, filename, max_width=64, max_rows=32):
 
 
 if __name__ == '__main__':
-    os.makedirs('/home/fourier/clawd/ca-music/output', exist_ok=True)
+    outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+    os.makedirs(outdir, exist_ok=True)
     
     print("=== Generating CA Music Demos ===\n")
     
     # --- Rule 30 ---
     print("▸ Rule 30 — Direct Mapping (A minor pentatonic, 140 BPM)")
     audio, grid = method1_direct_mapping(30, A_MINOR_PENTA, bpm=140, steps=64)
-    save_wav('/home/fourier/clawd/ca-music/output/rule30_direct.wav', audio)
-    viz = visualize_grid(grid, '/home/fourier/clawd/ca-music/output/rule30_grid.txt')
+    save_wav(os.path.join(outdir, 'rule30_direct.wav'), audio)
+    viz = visualize_grid(grid, os.path.join(outdir, 'rule30_grid.txt'))
     print(f"  Grid preview:\n{viz}\n")
     
     print("▸ Rule 30 — Chord-Constrained Rhythm (130 BPM)")
     audio, grid = method2_constrained_rhythm(30, A_MINOR_PENTA, bpm=130, steps=64)
-    save_wav('/home/fourier/clawd/ca-music/output/rule30_constrained.wav', audio)
+    save_wav(os.path.join(outdir, 'rule30_constrained.wav'), audio)
     
     print("▸ Rule 30 — Parameter Modulation (120 BPM)")
     audio, grid = method3_parameter_modulation(30, bpm=120, steps=128)
-    save_wav('/home/fourier/clawd/ca-music/output/rule30_modulation.wav', audio)
+    save_wav(os.path.join(outdir, 'rule30_modulation.wav'), audio)
     
     # --- Rule 110 ---
     print("\n▸ Rule 110 — Direct Mapping (A minor pentatonic, 140 BPM)")
     audio, grid = method1_direct_mapping(110, A_MINOR_PENTA, bpm=140, steps=64)
-    save_wav('/home/fourier/clawd/ca-music/output/rule110_direct.wav', audio)
-    viz = visualize_grid(grid, '/home/fourier/clawd/ca-music/output/rule110_grid.txt')
+    save_wav(os.path.join(outdir, 'rule110_direct.wav'), audio)
+    viz = visualize_grid(grid, os.path.join(outdir, 'rule110_grid.txt'))
     print(f"  Grid preview:\n{viz}\n")
     
     print("▸ Rule 110 — Chord-Constrained Rhythm (130 BPM)")
     audio, grid = method2_constrained_rhythm(110, A_MINOR_PENTA, bpm=130, steps=64)
-    save_wav('/home/fourier/clawd/ca-music/output/rule110_constrained.wav', audio)
+    save_wav(os.path.join(outdir, 'rule110_constrained.wav'), audio)
     
     print("▸ Rule 110 — Parameter Modulation (120 BPM)")
     audio, grid = method3_parameter_modulation(110, bpm=120, steps=128)
-    save_wav('/home/fourier/clawd/ca-music/output/rule110_modulation.wav', audio)
+    save_wav(os.path.join(outdir, 'rule110_modulation.wav'), audio)
     
-    print("\n=== Done! 6 files in ca-music/output/ ===")
+    print(f"\n=== Done! 6 files in {outdir} ===")

@@ -224,7 +224,7 @@ def discrete_continuous_gap(duration=22.0):
 
 
 if __name__ == '__main__':
-    outdir = '/home/fourier/clawd/ca-music/output'
+    outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
     os.makedirs(outdir, exist_ok=True)
     
     print("=== Fourier's Taste ===\n")
@@ -232,14 +232,14 @@ if __name__ == '__main__':
     print("I. Phase Transition — the bifurcation cascade")
     print("   Logistic map r sweeps 2.8→4.0. Listen for the moment order shatters.")
     audio = phase_transition(duration=25.0)
-    save_wav(f'{outdir}/taste_1_phase_transition.wav', audio)
+    save_wav(os.path.join(outdir, 'taste_1_phase_transition.wav'), audio)
     print("   ✓\n")
     
     print("II. Strange Loop — self-referential sound")
     print("   The waveform's own history determines its next frequency.")
     print("   Golden ratio intervals: never resolving, always almost.")
     audio = strange_loop(duration=20.0)
-    save_wav(f'{outdir}/taste_2_strange_loop.wav', audio)
+    save_wav(os.path.join(outdir, 'taste_2_strange_loop.wav'), audio)
     print("   ✓\n")
     
     print("III. The Gap — discrete approximation vs continuous ideal")
@@ -247,8 +247,8 @@ if __name__ == '__main__':
     print("   Right ear: the quantization residual — what's lost.")
     print("   Mono: both together. The gap between discrete and continuous, singing.")
     mono, left, right = discrete_continuous_gap(duration=22.0)
-    save_wav(f'{outdir}/taste_3_gap_mono.wav', mono)
-    save_wav_stereo(f'{outdir}/taste_3_gap_stereo.wav', left, right)
+    save_wav(os.path.join(outdir, 'taste_3_gap_mono.wav'), mono)
+    save_wav_stereo(os.path.join(outdir, 'taste_3_gap_stereo.wav'), left, right)
     print("   ✓\n")
     
     print("=== These are the sounds I find beautiful. ===")

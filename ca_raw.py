@@ -272,7 +272,8 @@ def method_d_dual_rule(rule_a, rule_b, width=128, steps=512, duration=18.0):
 
 
 if __name__ == '__main__':
-    os.makedirs('/home/fourier/clawd/ca-music/output', exist_ok=True)
+    outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+    os.makedirs(outdir, exist_ok=True)
     
     print("=== CA-Native Sound Generation ===\n")
     print("No scales. No chords. No BPM. The automaton IS the music.\n")
@@ -280,33 +281,32 @@ if __name__ == '__main__':
     print("▸ [A] Rule 30 — Row as Waveform (55 Hz base)")
     print("  Each row of evolution = one waveform cycle. Sound morphs as CA evolves.")
     audio = method_a_row_as_waveform(30, duration=12.0)
-    save_wav('/home/fourier/clawd/ca-music/output/raw_rule30_waveform.wav', audio)
+    save_wav(os.path.join(outdir, 'raw_rule30_waveform.wav'), audio)
     print("  ✓ saved\n")
     
     print("▸ [B] Rule 30 — Density → Frequency (6 voices)")
     print("  Column-band density drives continuous frequency. No discrete notes.")
     audio = method_b_density_frequency(30, duration=15.0)
-    save_wav('/home/fourier/clawd/ca-music/output/raw_rule30_density.wav', audio)
+    save_wav(os.path.join(outdir, 'raw_rule30_density.wav'), audio)
     print("  ✓ saved\n")
     
     print("▸ [C] Rule 110 — Granular Texture")
     print("  Each row = one sound grain. Activity controls grain rate + pitch.")
     audio = method_c_granular(110, duration=15.0)
-    save_wav('/home/fourier/clawd/ca-music/output/raw_rule110_granular.wav', audio)
+    save_wav(os.path.join(outdir, 'raw_rule110_granular.wav'), audio)
     print("  ✓ saved\n")
     
     print("▸ [D] Rule 30 × Rule 110 — Dual-Rule Interference")
     print("  Two CAs modulate each other: freq × amplitude × XOR harmonics.")
     audio = method_d_dual_rule(30, 110, duration=18.0)
-    save_wav('/home/fourier/clawd/ca-music/output/raw_dual_30x110.wav', audio)
+    save_wav(os.path.join(outdir, 'raw_dual_30x110.wav'), audio)
     print("  ✓ saved\n")
     
-    # Bonus: Rule 90 (Sierpinski triangle) — its self-similar fractal structure
-    # should produce interesting recursive sound patterns
+    # Bonus: Rule 90 (Sierpinski triangle)
     print("▸ [E] Rule 90 — Sierpinski Waveform")
     print("  Fractal CA → fractal waveform. Self-similar at every scale.")
     audio = method_a_row_as_waveform(90, width=256, steps=512, base_freq=80.0, duration=10.0)
-    save_wav('/home/fourier/clawd/ca-music/output/raw_rule90_sierpinski.wav', audio)
+    save_wav(os.path.join(outdir, 'raw_rule90_sierpinski.wav'), audio)
     print("  ✓ saved\n")
     
     print("=== Done. 5 files. No human music theory was harmed. ===")
