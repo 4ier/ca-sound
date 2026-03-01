@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halting Music — Visual</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; color: #e0e0e0; font-family: 'SF Mono', 'Fira Code', monospace; overflow: hidden; }
+canvas { display: block; }
+#ui {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  display: flex; align-items: center; gap: 0;
+  background: rgba(10,10,15,0.85); backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.tab {
+  padding: 14px 24px; cursor: pointer; font-size: 13px; letter-spacing: 0.5px;
+  color: #666; border-bottom: 2px solid transparent; transition: all 0.3s;
+  user-select: none;
+}
+.tab:hover { color: #aaa; }
+.tab.active { color: #fff; border-bottom-color: #ff6b35; }
+#info {
+  position: fixed; bottom: 16px; left: 20px; right: 20px; z-index: 10;
+  font-size: 12px; color: #555; line-height: 1.6;
+}
+#info .title { font-size: 15px; color: #bbb; margin-bottom: 2px; }
+#info .sub { color: #555; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="tab active" data-piece="0">I. Ensemble</div>
+  <div class="tab" data-piece="1">II. Journey</div>
+  <div class="tab" data-piece="2">III. Density</div>
+</div>
+<div id="info"></div>
+<canvas id="c"></canvas>
+
+<script>
+function collatz(n) {
+  const seq = [n]; while (n !== 1) { n = n % 2 === 0 ? n / 2 : 3 * n + 1; seq.push(n); } return seq;
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+let currentPiece = 0, startTime = performance.now();
+
+const palette = [
+  '#ff6b35','#f7c59f','#efefd0','#89b0ae','#4a6fa5',
+  '#e63946','#457b9d','#a8dadc','#f4a261','#2a9d8f',
+  '#e76f51','#264653','#e9c46a','#606c38','#dda15e',
+  '#bc6c25','#8ecae6'
+];
+
+// ── Data ──
+const ensembleStarters = [3,5,7,10,16,27,54,73,97,113,327,649,871,1161,6171,77031,837799];
+const ensembleSeqs = ensembleStarters.map(n => {
+  const seq = collatz(n);
+  const logSeq = seq.map(v => Math.log2(Math.max(v, 1)));
+  const logMax = Math.max(...logSeq);
+  return { n, seq, logSeq, logMax, norm: logSeq.map(v => v / (logMax || 1)) };
+});
+ensembleSeqs.sort((a, b) => a.seq.length - b.seq.length);
+const globalMaxSteps = ensembleSeqs[ensembleSeqs.length - 1].seq.length;
+
+const journey27 = collatz(27);
+
+const densitySeqs = [];
+for (let n = 100; n < 600; n++) densitySeqs.push(collatz(n));
+const densityMaxLen = Math.max(...densitySeqs.map(s => s.length));
+
+// ── I. Ensemble: seismograph layout ──
+function drawEnsemble(t) {
+  const duration = 40, progress = (t % duration) / duration;
+
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+
+  const margin = { top: 50, bottom: 80, left: 50, right: 30 };
+  const plotW = W - margin.left - margin.right;
+  const plotH = H - margin.top - margin.bottom;
+  const N = ensembleSeqs.length;
+  const laneH = plotH / N;
+  const entryWindow = 0.6;
+
+  // Time axis ticks
+  ctx.fillStyle = '#222';
+  ctx.font = '9px monospace';
+  for (let s = 0; s <= globalMaxSteps; s += 50) {
+    const x = margin.left + plotW * (s / globalMaxSteps);
+    ctx.fillRect(x, margin.top, 1, plotH);
+    if (s % 100 === 0) ctx.fillText(s, x - 4, H - margin.bottom + 14);
+  }
+
+  ensembleSeqs.forEach((item, idx) => {
+    const entryFrac = idx / N;
+    const entryTime = entryFrac * entryWindow;
+    if (progress < entryTime) return;
+
+    const localProgress = Math.min((progress - entryTime) / (1 - entryTime) * 1.5, 1);
+    const maxSteps = Math.min(Math.floor(localProgress * item.seq.length), item.seq.length);
+
+    const laneY = margin.top + idx * laneH;
+    const laneCenter = laneY + laneH / 2;
+    const amplitude = laneH * 0.42;
+
+    // Label
+    ctx.fillStyle = '#333';
+    ctx.font = '9px monospace';
+    ctx.fillText(`${item.n}`, 4, laneCenter + 3);
+
+    // Trace
+    const color = palette[idx % palette.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.3;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+
+    for (let i = 0; i < maxSteps; i++) {
+      const x = margin.left + plotW * (i / globalMaxSteps);
+      const y = laneCenter + amplitude - item.norm[i] * amplitude * 2;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Dot at head
+    if (maxSteps > 0 && maxSteps <= item.seq.length) {
+      const ci = maxSteps - 1;
+      const cx = margin.left + plotW * (ci / globalMaxSteps);
+      const cy = laneCenter + amplitude - item.norm[ci] * amplitude * 2;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+
+      // Glow
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 10);
+      g.addColorStop(0, color + '55'); g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  // Drone bar
+  ctx.fillStyle = '#ff6b35';
+  ctx.globalAlpha = 0.12 + Math.min(progress / entryWindow, 1) * 0.15;
+  ctx.fillRect(margin.left, H - margin.bottom + 2, plotW * progress, 2);
+  ctx.globalAlpha = 1;
+
+  document.getElementById('info').innerHTML =
+    `<div class="title">I. Collatz Ensemble</div>` +
+    `<div class="sub">17 voices · step axis 0–${globalMaxSteps} · each normalized to own peak · D1 drone ━</div>`;
+}
+
+// ── II. Journey n=27 ──
+function drawJourney(t) {
+  const seq = journey27;
+  const duration = 28, progress = (t % duration) / duration;
+  const maxSteps = Math.min(Math.floor(progress * seq.length * 1.3), seq.length);
+  const maxVal = Math.max(...seq);
+  const logMax = Math.log2(maxVal);
+
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+
+  const m = { top: 50, bottom: 80, left: 60, right: 40 };
+  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
+
+  // Grid
+  for (const v of [1, 4, 27, 100, 1000, 9232]) {
+    const ly = Math.log2(Math.max(v, 1));
+    const y = m.top + ph * (1 - ly / logMax);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(m.left, y); ctx.lineTo(W - m.right, y); ctx.stroke();
+    ctx.fillStyle = '#333'; ctx.font = '10px monospace';
+    ctx.fillText(v.toLocaleString(), 6, y + 3);
+  }
+
+  // Path segments with color
+  for (let i = 1; i < maxSteps; i++) {
+    const x0 = m.left + pw * ((i-1) / (seq.length - 1));
+    const x1 = m.left + pw * (i / (seq.length - 1));
+    const y0 = m.top + ph * (1 - Math.log2(Math.max(seq[i-1],1)) / logMax);
+    const y1 = m.top + ph * (1 - Math.log2(Math.max(seq[i],1)) / logMax);
+    const isUp = seq[i] > seq[i-1];
+
+    ctx.strokeStyle = isUp ? '#ff6b35' : '#4a6fa5';
+    ctx.lineWidth = 2.2;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Peak annotation
+  const peakIdx = seq.indexOf(maxVal);
+  if (peakIdx < maxSteps) {
+    const px = m.left + pw * (peakIdx / (seq.length - 1));
+    const py = m.top;
+    ctx.fillStyle = '#ff6b3555';
+    ctx.font = '11px monospace';
+    ctx.fillText('↑ 9232', px + 6, py + 14);
+  }
+
+  // Start annotation
+  if (maxSteps > 2) {
+    ctx.fillStyle = '#666';
+    ctx.font = '10px monospace';
+    ctx.fillText('27', m.left - 4, m.top + ph * (1 - Math.log2(27) / logMax) - 8);
+  }
+
+  // Head dot
+  if (maxSteps > 0 && maxSteps <= seq.length) {
+    const ci = maxSteps - 1;
+    const cx = m.left + pw * (ci / (seq.length - 1));
+    const cy = m.top + ph * (1 - Math.log2(Math.max(seq[ci],1)) / logMax);
+
+    const pulse = 1 + Math.sin(t * 5) * 0.25;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 18 * pulse);
+    g.addColorStop(0, '#ff6b35aa'); g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, 18 * pulse, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = '#999';
+    ctx.font = '12px monospace';
+    ctx.fillText(`${seq[ci].toLocaleString()}  [${ci}]`, cx + 14, cy - 6);
+  }
+
+  document.getElementById('info').innerHTML =
+    `<div class="title">II. Single Journey — n=27</div>` +
+    `<div class="sub">111 steps · peak 9,232 · ` +
+    `<span style="color:#ff6b35">━</span> 3n+1 (odd→up) ` +
+    `<span style="color:#4a6fa5">━</span> n/2 (even→down) · ` +
+    `step ${Math.min(maxSteps, seq.length) - 1}/${seq.length - 1}</div>`;
+}
+
+// ── III. Density ──
+// Pre-compute stats
+const densityStats = [];
+for (let step = 0; step < densityMaxLen; step++) {
+  let count = 0, sum = 0, vals = [];
+  for (const seq of densitySeqs) {
+    if (step < seq.length) { count++; const v = seq[step]; sum += v; vals.push(v); }
+  }
+  const mean = count ? sum / count : 0;
+  const std = count > 1 ? Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / count) : 0;
+  densityStats.push({ count, mean, std, max: vals.length ? Math.max(...vals) : 0 });
+}
+const dMaxMean = Math.max(...densityStats.map(s => s.mean));
+const dMaxStd = Math.max(...densityStats.map(s => s.std));
+
+function drawDensity(t) {
+  const duration = 30, progress = (t % duration) / duration;
+  const currentStep = Math.floor(progress * densityMaxLen);
+
+  // Fade trail
+  ctx.fillStyle = 'rgba(10,10,15,0.12)';
+  ctx.fillRect(0, 0, W, H);
+
+  const m = { top: 50, bottom: 80, left: 50, right: 50 };
+  const pw = W - m.left - m.right, ph = H - m.top - m.bottom;
+
+  const stat = densityStats[Math.min(currentStep, densityStats.length - 1)];
+  const density = stat.count / densitySeqs.length;
+  const normMean = stat.mean / (dMaxMean || 1);
+  const normStd = stat.std / (dMaxStd || 1);
+
+  // Draw particles: each sequence as a dot at its current value
+  const maxLogAll = 18; // ~262144 — cap for display
+  for (let i = 0; i < densitySeqs.length; i++) {
+    const seq = densitySeqs[i];
+    if (currentStep >= seq.length) continue;
+    const val = seq[currentStep];
+    const logVal = Math.log2(Math.max(val, 1));
+    const y = m.top + ph * (1 - Math.min(logVal / maxLogAll, 1));
+    // x: spread by sequence index
+    const x = m.left + pw * (i / densitySeqs.length);
+
+    const dev = stat.std > 0 ? (val - stat.mean) / stat.std : 0;
+    const alpha = 0.25 + density * 0.5;
+    if (dev > 0) ctx.fillStyle = `rgba(255,107,53,${alpha})`;
+    else ctx.fillStyle = `rgba(74,111,165,${alpha})`;
+    ctx.fillRect(x, y, 2, 2);
+  }
+
+  // Mean line
+  const meanLogY = m.top + ph * (1 - Math.min(Math.log2(Math.max(stat.mean, 1)) / maxLogAll, 1));
+  ctx.strokeStyle = `rgba(255,255,255,${0.08 + density * 0.2})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(m.left, meanLogY); ctx.lineTo(W - m.right, meanLogY); ctx.stroke();
+
+  // ±1σ band
+  const hiY = m.top + ph * (1 - Math.min(Math.log2(Math.max(stat.mean + stat.std, 1)) / maxLogAll, 1));
+  const loY = m.top + ph * (1 - Math.min(Math.log2(Math.max(stat.mean - stat.std, 1)) / maxLogAll, 1));
+  ctx.fillStyle = `rgba(255,107,53,${0.02 + density * 0.04})`;
+  ctx.fillRect(m.left, hiY, pw, loY - hiY);
+
+  // Stats
+  ctx.fillStyle = '#444'; ctx.font = '11px monospace';
+  const sx = W - 180, sy = 60;
+  ctx.fillText(`active  ${stat.count}/${densitySeqs.length}`, sx, sy);
+  ctx.fillText(`mean    ${stat.mean.toFixed(0)}`, sx, sy + 16);
+  ctx.fillText(`σ       ${stat.std.toFixed(0)}`, sx, sy + 32);
+  ctx.fillText(`step    ${currentStep}/${densityMaxLen}`, sx, sy + 48);
+
+  // Progress
+  ctx.fillStyle = '#ff6b3533';
+  ctx.fillRect(0, H - 3, W * progress, 3);
+
+  document.getElementById('info').innerHTML =
+    `<div class="title">III. Density</div>` +
+    `<div class="sub">500 sequences (n=100…599) as particle cloud · ` +
+    `<span style="color:#ff6b35">■</span> above mean ` +
+    `<span style="color:#4a6fa5">■</span> below · ` +
+    `noise source: logistic map r=3.99</div>`;
+}
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentPiece = parseInt(tab.dataset.piece);
+    startTime = performance.now();
+    ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  });
+});
+
+// ── Loop ──
+function frame(now) {
+  const t = (now - startTime) / 1000;
+  if (currentPiece === 0) drawEnsemble(t);
+  else if (currentPiece === 1) drawJourney(t);
+  else drawDensity(t);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
