@@ -19,7 +19,7 @@ jobs:
 
       - name: Generate audio
         run: |
-          for f in halting_music.py ca_raw.py ca_taste.py; do
+          for f in halting_music.py ca_raw.py ca_taste.py busy_beaver.py lambda_calculus.py; do
             [ -f "$f" ] && python3 "$f"
           done
 
