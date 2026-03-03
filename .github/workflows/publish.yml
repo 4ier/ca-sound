@@ -14,13 +14,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install deps
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python deps
         run: pip install numpy Pillow
 
       - name: Generate audio
         run: |
-          for f in halting_music.py ca_raw.py ca_taste.py busy_beaver.py lambda_calculus.py; do
-            [ -f "$f" ] && python3 "$f"
+          for f in *.py; do
+            case "$f" in render_video.py) continue;; esac
+            echo "=== Running $f ==="
+            python3 "$f" || true
           done
 
       - name: Render videos
