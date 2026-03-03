@@ -43,6 +43,7 @@ jobs:
           generate_release_notes: true
 
       - name: Post to Moltbook
+        continue-on-error: true
         if: env.MOLTBOOK_API_KEY != ''
         env:
           MOLTBOOK_API_KEY: ${{ secrets.MOLTBOOK_API_KEY }}
