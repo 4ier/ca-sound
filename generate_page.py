@@ -121,7 +121,7 @@ def generate():
     <div class="track-num">{global_num}</div>
     <div class="track-body">
       <div class="track-name">{html.escape(title)}</div>{note_html}
-      <audio controls preload="none" src="{url}/{stem}.wav"></audio>{video_html}
+      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}" src="{url}/{stem}.wav"></audio>{video_html}
     </div>
   </div>
 ''')
@@ -152,9 +152,14 @@ TEMPLATE = r'''<!DOCTYPE html>
     --mono: 'SF Mono', 'Cascadia Code', monospace;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { background: var(--bg); }
   body {
-    font-family: var(--serif); background: var(--bg); color: var(--fg);
-    min-height: 100vh;
+    font-family: var(--serif); background: rgba(12,11,10,0.7); color: var(--fg);
+    min-height: 100vh; position: relative;
+  }
+  #vis-canvas {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    z-index: -1; pointer-events: none; opacity: 0.74;
   }
 
   .cover {
@@ -266,6 +271,7 @@ TEMPLATE = r'''<!DOCTYPE html>
 </style>
 </head>
 <body>
+<canvas id="vis-canvas" aria-hidden="true"></canvas>
 
 <header class="cover">
   <h1>The Bach Programme</h1>
@@ -296,7 +302,24 @@ TEMPLATE = r'''<!DOCTYPE html>
   </p>
 </footer>
 
+<script src="vis.js"></script>
 <script>
+const VIS_EVENT = 'ca-vis';
+function emitVis(type, audio, extra = {}) {
+  if (!audio) return;
+  window.dispatchEvent(new CustomEvent(VIS_EVENT, {
+    detail: {
+      type,
+      audio,
+      vis: audio.dataset.vis || 'rule',
+      stem: audio.dataset.stem || '',
+      currentTime: audio.currentTime || 0,
+      duration: audio.duration || 0,
+      ...extra
+    }
+  }));
+}
+
 // Custom player: replace <audio> with visual player
 document.querySelectorAll('audio').forEach(el => {
   const wrap = document.createElement('div');
@@ -331,7 +354,11 @@ document.querySelectorAll('audio').forEach(el => {
   // Stop all other players
   function stopOthers() {
     document.querySelectorAll('audio').forEach(a => {
-      if (a !== el && !a.paused) { a.pause(); a.currentTime = 0; }
+      if (a !== el && !a.paused) {
+        a.pause();
+        a.currentTime = 0;
+        emitVis('stop', a, { reason: 'other-track' });
+      }
     });
     document.querySelectorAll('.player button.playing').forEach(b => {
       if (b !== btn) { b.classList.remove('playing'); b.innerHTML = '&#9654;'; }
@@ -341,33 +368,52 @@ document.querySelectorAll('audio').forEach(el => {
   btn.onclick = () => {
     if (el.paused) {
       stopOthers();
-      el.play();
-      btn.innerHTML = '&#9646;&#9646;';
-      btn.classList.add('playing');
+      const p = el.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {
+          btn.innerHTML = '&#9654;';
+          btn.classList.remove('playing');
+        });
+      }
     } else {
       el.pause();
-      btn.innerHTML = '&#9654;';
-      btn.classList.remove('playing');
     }
+  };
+
+  el.onplay = () => {
+    btn.innerHTML = '&#9646;&#9646;';
+    btn.classList.add('playing');
+    emitVis('play', el);
+  };
+
+  el.onpause = () => {
+    btn.innerHTML = '&#9654;';
+    btn.classList.remove('playing');
+    emitVis('pause', el);
   };
 
   el.ontimeupdate = () => {
     const pct = el.duration ? (el.currentTime / el.duration * 100) : 0;
     progBar.style.width = pct + '%';
     time.textContent = fmt(el.currentTime) + ' / ' + fmt(el.duration);
+    emitVis('time', el);
   };
 
   el.onended = () => {
     btn.innerHTML = '&#9654;';
     btn.classList.remove('playing');
     progBar.style.width = '0%';
+    emitVis('ended', el);
   };
 
   progWrap.onclick = (e) => {
     const rect = progWrap.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
     if (el.duration) el.currentTime = pct * el.duration;
+    emitVis('seek', el);
   };
+
+  emitVis('register', el);
 });
 </script>
 
