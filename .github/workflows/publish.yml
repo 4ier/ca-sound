@@ -26,13 +26,25 @@ jobs:
       - name: Generate audio
         run: |
           for f in *.py; do
-            case "$f" in render_video.py) continue;; esac
+            case "$f" in render_video.py|generate_page.py) continue;; esac
             echo "=== Running $f ==="
             python3 "$f" || true
           done
 
       - name: Render videos
         run: python3 render_video.py
+
+      - name: Generate album page
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 generate_page.py
+
+      - name: Deploy album page
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --cached --quiet || (git commit -m "update album page [skip ci]" && git push origin HEAD:main)
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
