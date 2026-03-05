@@ -241,9 +241,8 @@
     }
   }
   function resizeCanvas() {
-    const rect = document.documentElement.getBoundingClientRect();
-    const w = Math.max(window.innerWidth, Math.round(rect.width));
-    const h = Math.max(window.innerHeight, Math.round(rect.height));
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     state.w = w;
     state.h = h;
@@ -300,13 +299,23 @@
       stem: state.activeStem,
       playhead: state.playhead,
       duration: state.duration,
-      hasTrack: !!state.activeAudio && state.targetIntensity > 0.02
+      hasTrack: !!state.activeAudio && !state.activeAudio.paused
     };
     const sketch = resolveSketch(state.activeVis, state.activeStem);
-    if (state.fallbackOnly || !state.audioReady) {
-      sketchAmbient.draw(api);
-    } else if (api.hasTrack) {
+    if (api.hasTrack) {
+      // Use time-based fallback intensity when audio analysis returns zero
+      if (api.intensity < 0.01 && state.activeAudio && !state.activeAudio.paused) {
+        const t = (ts % 4000) / 4000;
+        api.intensity = 0.3 + 0.2 * Math.sin(t * Math.PI * 2);
+        api.audio.bass = api.intensity * 0.8;
+        api.audio.mid = api.intensity * 0.6;
+        api.audio.treble = api.intensity * 0.4;
+        api.audio.energy = api.intensity;
+        api.audio.rms = api.intensity * 0.5;
+      }
       sketch.draw(api);
+    } else if (state.fallbackOnly || !state.audioReady) {
+      sketchAmbient.draw(api);
     }
     state.raf = requestAnimationFrame(loop);
   }

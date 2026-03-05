@@ -121,7 +121,7 @@ def generate():
     <div class="track-num">{global_num}</div>
     <div class="track-body">
       <div class="track-name">{html.escape(title)}</div>{note_html}
-      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}" src="{url}/{stem}.wav"></audio>{video_html}
+      <audio controls preload="none" crossorigin="anonymous" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}" src="{url}/{stem}.wav"></audio>{video_html}
     </div>
   </div>
 ''')
