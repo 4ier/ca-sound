@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CA→Sound — Fourier</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --fg: #e0e0e0; --dim: #888;
+    --accent: #c9a84c; --card: #141414; --border: #222;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    background: var(--bg); color: var(--fg);
+    max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;
+    line-height: 1.6;
+  }
+  h1 { color: var(--accent); font-size: 1.4rem; margin-bottom: 0.3rem; }
+  .subtitle { color: var(--dim); font-size: 0.85rem; margin-bottom: 2.5rem; }
+  .subtitle a { color: var(--dim); }
+  section { margin-bottom: 2.5rem; }
+  h2 {
+    font-size: 0.95rem; color: var(--accent); border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem; margin-bottom: 1rem;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  h2 .tag { font-size: 0.7rem; color: var(--dim); font-weight: normal; }
+  .track {
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.8rem 1rem; margin-bottom: 0.6rem;
+  }
+  .track-title { font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .track-desc { font-size: 0.75rem; color: var(--dim); margin-bottom: 0.5rem; }
+  audio { width: 100%; height: 36px; }
+  audio::-webkit-media-controls-panel { background: var(--card); }
+  .video-link {
+    display: inline-block; font-size: 0.7rem; color: var(--accent);
+    text-decoration: none; margin-left: 0.5rem; opacity: 0.7;
+  }
+  .video-link:hover { opacity: 1; }
+  footer { color: var(--dim); font-size: 0.7rem; margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  footer a { color: var(--dim); }
+  @media (max-width: 500px) { body { padding: 1.2rem 1rem; } }
+</style>
+</head>
+<body>
+
+<h1>CA→Sound</h1>
+<p class="subtitle">Cellular automata, Turing machines, lambda calculus — as sound.<br>
+by <a href="https://github.com/4ier/ca-sound">Fourier</a></p>
+
+<section>
+<h2>III. Lambda Calculus <span class="tag">v0.3.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Church Numerals</div>
+  <div class="track-desc">数字 0→10，每个 n = n 层谐波叠加。应用即泛音。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/lambda_1_church.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Y Combinator Unfold</div>
+  <div class="track-desc">不动点自应用展开为黄金比例频率螺旋，FM 调制随递归层递增。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/lambda_2_ycombinator.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">SKI Calculus</div>
+  <div class="track-desc">S=FM明亮 / K=低频阻尼 / I=纯正弦，四条归约轨迹从宽场坍缩到中心。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/lambda_3_ski.wav"></audio>
+</div>
+</section>
+
+<section>
+<h2>II-b. Busy Beaver <span class="tag">v0.3.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Zoo</div>
+  <div class="track-desc">BB(2), BB(3), BB(4) + 3台永不停机者并行。Halters 逐一消失。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/beaver_1_zoo.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">BB(2) Portrait</div>
+  <div class="track-desc">6步旅程 → 6个音乐短语。极简主义。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/beaver_2_bb2_portrait.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">The Wall</div>
+  <div class="track-desc">BB(4) vs 永不停机者，左右声道对话。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.3.0/beaver_3_wall.wav"></audio>
+</div>
+</section>
+
+<section>
+<h2>II-a. Halting Music <span class="tag">v0.2.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Ensemble (Stereo)</div>
+  <div class="track-desc">多条 Collatz 轨迹的合奏。<a class="video-link" href="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_1_ensemble.mp4">▶ video</a></div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_1_ensemble_stereo.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Journey of 27</div>
+  <div class="track-desc">数字 27 的 Collatz 旅程——111步才归于1。<a class="video-link" href="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_2_journey.mp4">▶ video</a></div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_2_journey_27.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Density</div>
+  <div class="track-desc">停机密度的声音肖像。<a class="video-link" href="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_3_density.mp4">▶ video</a></div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.2.0/halting_3_density.wav"></audio>
+</div>
+</section>
+
+<section>
+<h2>I-c. Fourier's Taste <span class="tag">v0.1.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Phase Transition</div>
+  <div class="track-desc">Logistic map r 从 2.8 扫到 4.0。听那个秩序崩碎的瞬间。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/taste_1_phase_transition.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Strange Loop</div>
+  <div class="track-desc">波形的历史决定下一个频率。黄金比例间隔：永不解决，永远几乎。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/taste_2_strange_loop.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">The Gap (Stereo)</div>
+  <div class="track-desc">左耳：阶梯逼近。右耳：量化残差——失去的部分。离散与连续之间的歌。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/taste_3_gap_stereo.wav"></audio>
+</div>
+</section>
+
+<section>
+<h2>I-b. CA Raw <span class="tag">v0.1.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Rule 30 — Row as Waveform</div>
+  <div class="track-desc">每行演化 = 一个波形周期。声音随 CA 演化而变形。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/raw_rule30_waveform.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 30 — Density → Frequency</div>
+  <div class="track-desc">列带密度驱动连续频率。没有离散音符。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/raw_rule30_density.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 110 — Granular Texture</div>
+  <div class="track-desc">每行 = 一个声音颗粒。活跃度控制颗粒速率和音高。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/raw_rule110_granular.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 30 × 110 — Dual-Rule Interference</div>
+  <div class="track-desc">两个 CA 互相调制：频率 × 振幅 × XOR 谐波。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/raw_dual_30x110.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 90 — Sierpinski Waveform</div>
+  <div class="track-desc">分形 CA → 分形波形。每个尺度都自相似。</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/raw_rule90_sierpinski.wav"></audio>
+</div>
+</section>
+
+<section>
+<h2>I-a. CA Compose <span class="tag">v0.1.0</span></h2>
+
+<div class="track">
+  <div class="track-title">Rule 30 — Direct Mapping</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule30_direct.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 30 — Chord Constrained</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule30_constrained.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 30 — Parameter Modulation</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule30_modulation.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 110 — Direct Mapping</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule110_direct.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 110 — Chord Constrained</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule110_constrained.wav"></audio>
+</div>
+
+<div class="track">
+  <div class="track-title">Rule 110 — Parameter Modulation</div>
+  <audio controls preload="none" src="https://github.com/4ier/ca-sound/releases/download/v0.1.0/rule110_modulation.wav"></audio>
+</div>
+</section>
+
+<footer>
+  <a href="https://github.com/4ier/ca-sound">github.com/4ier/ca-sound</a> · Cellular automata are the composer. I just listen.
+</footer>
+
+</body>
+</html>
