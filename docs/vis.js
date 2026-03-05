@@ -303,15 +303,15 @@
     };
     const sketch = resolveSketch(state.activeVis, state.activeStem);
     if (api.hasTrack) {
-      // Use time-based fallback intensity when audio analysis returns zero
-      if (api.intensity < 0.01 && state.activeAudio && !state.activeAudio.paused) {
+      // Use time-based fallback when audio analysis returns zero (CORS blocked)
+      if (api.audio.energy < 0.01 && state.activeAudio && !state.activeAudio.paused) {
         const t = (ts % 4000) / 4000;
-        api.intensity = 0.3 + 0.2 * Math.sin(t * Math.PI * 2);
-        api.audio.bass = api.intensity * 0.8;
-        api.audio.mid = api.intensity * 0.6;
-        api.audio.treble = api.intensity * 0.4;
-        api.audio.energy = api.intensity;
-        api.audio.rms = api.intensity * 0.5;
+        const fakeIntensity = 0.3 + 0.2 * Math.sin(t * Math.PI * 2);
+        api.audio.bass = fakeIntensity * 0.8;
+        api.audio.mid = fakeIntensity * 0.6;
+        api.audio.treble = fakeIntensity * 0.4;
+        api.audio.energy = fakeIntensity;
+        api.audio.rms = fakeIntensity * 0.5;
       }
       sketch.draw(api);
     } else if (state.fallbackOnly || !state.audioReady) {
@@ -327,7 +327,24 @@
   function updateAudioMetrics(ts) {
     const m = state.metrics;
     m.nowMs = ts;
-    if (!state.audioReady || !analyser || !state.activeAudio || state.activeAudio.paused) {
+    const isPlaying = state.activeAudio && !state.activeAudio.paused;
+    if (!state.audioReady || !analyser || !isPlaying) {
+      if (isPlaying) {
+        // Audio playing but no analyser (CORS blocked) — use time-based fallback
+        const t = (ts % 3000) / 3000;
+        const pulse = 0.3 + 0.25 * Math.sin(t * Math.PI * 2);
+        const slow = 0.2 + 0.15 * Math.sin(t * Math.PI * 0.7);
+        m.bass = pulse;
+        m.mid = slow;
+        m.treble = 0.15 + 0.1 * Math.sin(t * Math.PI * 3.1);
+        m.energy = pulse * 0.6 + slow * 0.4;
+        m.rms = pulse * 0.5;
+        m.flux = 0.03 + 0.02 * Math.sin(t * Math.PI * 5);
+        m.transient = 0;
+        m.beat = Math.sin(t * Math.PI * 2) > 0.95;
+        syncAnalysis();
+        return;
+      }
       m.bass *= 0.92;
       m.mid *= 0.92;
       m.treble *= 0.92;
@@ -341,6 +358,17 @@
     }
     analyser.getByteFrequencyData(state.freqData);
     analyser.getByteTimeDomainData(state.timeDomainData);
+    // Detect CORS-tainted source (all frequency data is zero)
+    let allZero = true;
+    for (let i = 0; i < state.freqData.length; i += 16) {
+      if (state.freqData[i] > 0) { allZero = false; break; }
+    }
+    if (allZero && isPlaying) {
+      // CORS blocked — switch to time-based fallback permanently
+      state.audioReady = false;
+      updateAudioMetrics(ts);
+      return;
+    }
     const bass = bandEnergy(20, 140);
     const mid = bandEnergy(140, 2200);
     const treble = bandEnergy(2200, 12000);
