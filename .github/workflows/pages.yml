@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'generate_page.py'
       - '*.py'
       - 'vis.js'
+      - '.github/workflows/pages.yml'
 
 permissions:
   contents: write
