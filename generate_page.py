@@ -6,17 +6,17 @@ REPO = "4ier/ca-sound"
 TAG = os.environ.get("TAG", "latest")
 
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
-# Series order: lower = newer (shown first)
+# Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
-    "gol":     (1, "Game of Life",    "Conway 的零玩家游戏。涌现、振荡、永生。"),
-    "fractal": (2, "Fractals",        "逃逸、变形、无限缩放。复平面的声音地图。"),
-    "lambda":  (3, "Lambda Calculus",  "函数即声音。应用即泛音。归约即沉默。"),
-    "beaver":  (4, "Busy Beaver",     "图灵机在有限步内能写下多少个 1？"),
-    "halting": (5, "Halting Music",   "Collatz 猜想：简单的规则，无人能证明的终点。"),
-    "taste":   (6, "Fourier's Taste", "相变临界点、自指怪圈、离散与连续的间隙。"),
-    "raw":     (7, "CA Raw",          "没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。"),
-    "sort":    (8, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
-    "rule":    (9, "CA Compose",      "用人类音乐理论约束 CA 的早期实验。"),
+    "sort":    (90, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
+    "raw":     (80, "CA Raw",          "没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。"),
+    "taste":   (70, "Fourier's Taste", "相变临界点、自指怪圈、离散与连续的间隙。"),
+    "halting": (60, "Halting Music",   "Collatz 猜想：简单的规则，无人能证明的终点。"),
+    "beaver":  (50, "Busy Beaver",     "图灵机在有限步内能写下多少个 1？"),
+    "lambda":  (40, "Lambda Calculus",  "函数即声音。应用即泛音。归约即沉默。"),
+    "fractal": (30, "Fractals",        "逃逸、变形、无限缩放。复平面的声音地图。"),
+    "gol":     (20, "Game of Life",    "Conway 的零玩家游戏。涌现、振荡、永生。"),
+    "rule":    (10, "CA Compose",      "用人类音乐理论约束 CA 的早期实验。"),
 }
 
 TRACKS = {
@@ -105,7 +105,7 @@ def generate():
             pass
 
     # Sort series by order
-    sorted_series = sorted(grouped.items(), key=lambda x: SERIES.get(x[0], (99,))[0])
+    sorted_series = sorted(grouped.items(), key=lambda x: SERIES.get(x[0], (0,))[0], reverse=True)
 
     tracks_html = []
     global_num = 0
