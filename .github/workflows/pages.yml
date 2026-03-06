@@ -1,0 +1,53 @@
+name: Update Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'generate_page.py'
+      - '*.py'
+      - 'vis.js'
+
+permissions:
+  contents: write
+
+jobs:
+  update-page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install numpy Pillow && sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Generate audio
+        run: |
+          for f in *.py; do
+            case "$f" in render_video.py|generate_page.py) continue;; esac
+            echo "=== Running $f ==="
+            python3 "$f" || true
+          done
+
+      - name: Find latest release tag
+        id: tag
+        run: |
+          TAG=$(gh release view --json tagName -q .tagName 2>/dev/null || echo "latest")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Generate page
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: python3 generate_page.py
+
+      - name: Push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --cached --quiet || (git commit -m "update album page [skip ci]" && git push)
