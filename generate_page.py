@@ -15,7 +15,8 @@ SERIES = {
     "halting": (5, "Halting Music",   "Collatz 猜想：简单的规则，无人能证明的终点。"),
     "taste":   (6, "Fourier's Taste", "相变临界点、自指怪圈、离散与连续的间隙。"),
     "raw":     (7, "CA Raw",          "没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。"),
-    "rule":    (8, "CA Compose",      "用人类音乐理论约束 CA 的早期实验。"),
+    "sort":    (8, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
+    "rule":    (9, "CA Compose",      "用人类音乐理论约束 CA 的早期实验。"),
 }
 
 TRACKS = {
@@ -49,6 +50,10 @@ TRACKS = {
     "raw_rule110_granular":     ("raw", "Rule 110 — Granular",       "每行 = 一个声音颗粒。"),
     "raw_dual_30x110":          ("raw", "Rule 30 × 110 — Interference", "两个 CA 互相调制。"),
     "raw_rule90_sierpinski":    ("raw", "Rule 90 — Sierpinski",      "分形 CA → 分形波形。"),
+    # Sorting
+    "sort_1_bubble_meditation":  ("sort", "Bubble Sort Meditation",   "耐心的相邻交换——每次只冒泡一步，秩序在涟漪中浮现。"),
+    "sort_2_quicksort_drama":    ("sort", "Quicksort Drama",         "递归分区的戏剧性——pivot 选定，世界一分为二。"),
+    "sort_3_merge_counterpoint": ("sort", "Merge Sort Counterpoint", "归并的双声部对位——两条有序序列交织成一。"),
     # Compose
     "rule30_direct":            ("rule", "Rule 30 — Direct",         ""),
     "rule30_constrained":       ("rule", "Rule 30 — Constrained",    ""),
