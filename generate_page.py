@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "graph":   (100, "Graph Algorithms",    "同一张图，三种遍历人格。Dijkstra 的耐心、BFS 的波浪、DFS 的执念。"),
     "sort":    (90, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
     "raw":     (80, "CA Raw",          "没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。"),
     "taste":   (70, "Fourier's Taste", "相变临界点、自指怪圈、离散与连续的间隙。"),
@@ -20,6 +21,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Graph Algorithms
+    "graph_1_dijkstra_meditation": ("graph", "Dijkstra's Meditation",  "最短路松弛化为和声沉淀——波前如水滴扩散。"),
+    "graph_2_bfs_waves":           ("graph", "BFS Waves",              "广度优先的节奏波浪——同层节点齐声共鸣。"),
+    "graph_3_dfs_descent":         ("graph", "DFS Descent",            "深度优先的独奏旋律——潜入深处，回溯攀升。"),
     # Game of Life
     "gol_1_glider_symphony":    ("gol", "Glider Symphony",     "滑翔机舰队的交响——周期5的永恒旅行者。"),
     "gol_2_still_life_chorale": ("gol", "Still Life Chorale",  "静物的合唱：不变的模式，持续的和声。"),
