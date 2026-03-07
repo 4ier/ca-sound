@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "info":    (110, "Information Theory",  "熵、编码、压缩。信息的骨架如何发声？"),
     "graph":   (100, "Graph Algorithms",    "同一张图，三种遍历人格。Dijkstra 的耐心、BFS 的波浪、DFS 的执念。"),
     "sort":    (90, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
     "raw":     (80, "CA Raw",          "没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。"),
@@ -21,6 +22,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Information Theory
+    "info_1_entropy_gradient":     ("info", "Entropy Gradient",        "从纯净到噪声——Shannon 熵作为谐波密度的连续光谱。"),
+    "info_2_huffman_tree":         ("info", "Huffman Tree",            "字母频率决定音高与时值。常见即明亮简短，罕见即深沉悠长。"),
+    "info_3_lz_window":           ("info", "LZ Window",               "滑动窗口的记忆——新符号是发现，回引是回声。"),
     # Graph Algorithms
     "graph_1_dijkstra_meditation": ("graph", "Dijkstra's Meditation",  "最短路松弛化为和声沉淀——波前如水滴扩散。"),
     "graph_2_bfs_waves":           ("graph", "BFS Waves",              "广度优先的节奏波浪——同层节点齐声共鸣。"),
