@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "nt":      (120, "Number Theory",       "素数、筛法、模运算。数论的节奏藏在余数里。"),
     "info":    (110, "Information Theory",  "熵、编码、压缩。信息的骨架如何发声？"),
     "graph":   (100, "Graph Algorithms",    "同一张图，三种遍历人格。Dijkstra 的耐心、BFS 的波浪、DFS 的执念。"),
     "sort":    (90, "Sorting Algorithms", "同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。"),
@@ -22,6 +23,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Number Theory
+    "nt_1_sieve":             ("nt", "Sieve of Eratosthenes",  "古老的筛法化为打击乐团——合数被击落，素数持续鸣响。"),
+    "nt_2_prime_gaps":        ("nt", "Prime Gaps",             "相邻素数间的不规则间距——孪生素数急促连击，大间隙戏剧性留白。"),
+    "nt_3_modular_worlds":    ("nt", "Modular Worlds",         "mod 2,3,5,7,11,13 的残差类交织为复合节奏——中国剩余定理可听化。"),
     # Information Theory
     "info_1_entropy_gradient":     ("info", "Entropy Gradient",        "从纯净到噪声——Shannon 熵作为谐波密度的连续光谱。"),
     "info_2_huffman_tree":         ("info", "Huffman Tree",            "字母频率决定音高与时值。常见即明亮简短，罕见即深沉悠长。"),
