@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "auto":    (130, "Automata & Languages", "Chomsky 层级的声学肖像——有限自动机的判定、文法的分形生长、下推自动机的栈深记忆。"),
     "nt":      (120, "Number Theory",       "素数、筛法、模运算。数论的节奏藏在余数里。"),
     "info":    (110, "Information Theory",  "熵、编码、压缩。信息的骨架如何发声？"),
     "graph":   (100, "Graph Algorithms",    "同一张图，三种遍历人格。Dijkstra 的耐心、BFS 的波浪、DFS 的执念。"),
@@ -23,6 +24,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Automata & Languages
+    "auto_1_finite_automaton":       ("auto", "Finite Automaton",        "DFA 判定二进制可被 3 整除——接受态和弦明亮，拒绝态嗡鸣短促。"),
+    "auto_2_context_free_grammar":   ("auto", "Context-Free Grammar",   "L-system 文法的分形生长——深度决定音域，分支决定立体声。"),
+    "auto_3_pushdown_automaton":     ("auto", "Pushdown Automaton",     "匹配嵌套括号的下推自动机——push 升高，pop 回落，栈深成低频 drone。"),
     # Number Theory
     "nt_1_sieve":             ("nt", "Sieve of Eratosthenes",  "古老的筛法化为打击乐团——合数被击落，素数持续鸣响。"),
     "nt_2_prime_gaps":        ("nt", "Prime Gaps",             "相邻素数间的不规则间距——孪生素数急促连击，大间隙戏剧性留白。"),
