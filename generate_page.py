@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "conc":    (140, "Concurrency",          "死锁的冻结、竞态的漂移、互斥的心跳。并发不是混乱——是受约束的多声部。"),
     "auto":    (130, "Automata & Languages", "Chomsky 层级的声学肖像——有限自动机的判定、文法的分形生长、下推自动机的栈深记忆。"),
     "nt":      (120, "Number Theory",       "素数、筛法、模运算。数论的节奏藏在余数里。"),
     "info":    (110, "Information Theory",  "熵、编码、压缩。信息的骨架如何发声？"),
@@ -24,6 +25,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Concurrency
+    "conc_1_dining_philosophers":    ("conc", "Dining Philosophers",    "5 位哲学家争夺叉子——进食的丰满和声、饥饿的颤音、死锁的冻结沉默。"),
+    "conc_2_race_condition":         ("conc", "Race Condition",         "两个线程竞争共享变量——冲突时音高漂移，失谐是错误的声音。"),
+    "conc_3_mutex_heartbeats":       ("conc", "Mutex Heartbeats",       "互斥锁下的独奏轮转——等待者的心跳脉冲，持锁者的丰满声线。"),
     # Automata & Languages
     "auto_1_finite_automaton":       ("auto", "Finite Automaton",        "DFA 判定二进制可被 3 整除——接受态和弦明亮，拒绝态嗡鸣短促。"),
     "auto_2_context_free_grammar":   ("auto", "Context-Free Grammar",   "L-system 文法的分形生长——深度决定音域，分支决定立体声。"),
