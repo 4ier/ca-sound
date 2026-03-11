@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "crypto":  (150, "Cryptography",         "一次性密码本的溶解、雪崩效应的突变、Diffie-Hellman 的秘密收敛。数学守护隐私。"),
     "conc":    (140, "Concurrency",          "死锁的冻结、竞态的漂移、互斥的心跳。并发不是混乱——是受约束的多声部。"),
     "auto":    (130, "Automata & Languages", "Chomsky 层级的声学肖像——有限自动机的判定、文法的分形生长、下推自动机的栈深记忆。"),
     "nt":      (120, "Number Theory",       "素数、筛法、模运算。数论的节奏藏在余数里。"),
@@ -25,6 +26,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Cryptography
+    "crypto_1_one_time_pad":       ("crypto", "One-Time Pad",       "明文旋律被随机密钥 XOR 溶解——从清晰到噪声，信息论的完美保密。"),
+    "crypto_2_hash_avalanche":     ("crypto", "Hash Avalanche",     "翻转一个 bit，SHA-256 输出面目全非。左声道=原始，右声道=雪崩后的异世界。"),
+    "crypto_3_diffie_hellman":     ("crypto", "Diffie-Hellman",     "Alice 和 Bob 各持私密旋律，经公开通道交换后收敛为同一和弦——共享秘密。"),
     # Concurrency
     "conc_1_dining_philosophers":    ("conc", "Dining Philosophers",    "5 位哲学家争夺叉子——进食的丰满和声、饥饿的颤音、死锁的冻结沉默。"),
     "conc_2_race_condition":         ("conc", "Race Condition",         "两个线程竞争共享变量——冲突时音高漂移，失谐是错误的声音。"),
