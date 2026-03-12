@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "opt":     (160, "Optimization",          "梯度下降的耐心寻路、模拟退火从混沌到结晶、遗传算法的群体进化。最优解的声音肖像。"),
     "crypto":  (150, "Cryptography",         "一次性密码本的溶解、雪崩效应的突变、Diffie-Hellman 的秘密收敛。数学守护隐私。"),
     "conc":    (140, "Concurrency",          "死锁的冻结、竞态的漂移、互斥的心跳。并发不是混乱——是受约束的多声部。"),
     "auto":    (130, "Automata & Languages", "Chomsky 层级的声学肖像——有限自动机的判定、文法的分形生长、下推自动机的栈深记忆。"),
@@ -26,6 +27,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Optimization
+    "opt_1_gradient_descent":      ("opt", "Gradient Descent",      "8 个粒子在 Rastrigin 地形上寻路——被困局部最小的持续失谐，找到全局最优的收敛为纯净和弦。"),
+    "opt_2_simulated_annealing":   ("opt", "Simulated Annealing",   "高温时频率狂跳，冷却中逐渐收窄，偶尔的上坡接受如最后的叛逆。结晶为 A major。"),
+    "opt_3_genetic_algorithm":     ("opt", "Genetic Algorithm",     "20 个有机体向目标旋律进化——初始混沌，交叉重组，突变火花，最终群体齐声唱出 D minor 五声音阶。"),
     # Cryptography
     "crypto_1_one_time_pad":       ("crypto", "One-Time Pad",       "明文旋律被随机密钥 XOR 溶解——从清晰到噪声，信息论的完美保密。"),
     "crypto_2_hash_avalanche":     ("crypto", "Hash Avalanche",     "翻转一个 bit，SHA-256 输出面目全非。左声道=原始，右声道=雪崩后的异世界。"),
