@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "qc":      (170, "Quantum Computing",     "叠加态的和声、纠缠的立体声关联、量子行走的干涉条纹。量子世界不是比喻——它本身就是波。"),
     "opt":     (160, "Optimization",          "梯度下降的耐心寻路、模拟退火从混沌到结晶、遗传算法的群体进化。最优解的声音肖像。"),
     "crypto":  (150, "Cryptography",         "一次性密码本的溶解、雪崩效应的突变、Diffie-Hellman 的秘密收敛。数学守护隐私。"),
     "conc":    (140, "Concurrency",          "死锁的冻结、竞态的漂移、互斥的心跳。并发不是混乱——是受约束的多声部。"),
@@ -27,6 +28,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Quantum Computing
+    "qc_1_superposition":          ("qc", "Superposition",          "|0⟩=220Hz, |1⟩=330Hz——完美五度。Hadamard 门让两个频率共存，测量让一个永远消失。"),
+    "qc_2_entanglement":           ("qc", "Entanglement",           "Bell 态：左右声道完美关联。测量一个，另一个瞬间坍缩——距离无关。"),
+    "qc_3_quantum_walk":           ("qc", "Quantum Walk",           "左耳经典随机游走（高斯弥散），右耳量子游走（干涉尖峰）。同一条路，两种物理。"),
     # Optimization
     "opt_1_gradient_descent":      ("opt", "Gradient Descent",      "8 个粒子在 Rastrigin 地形上寻路——被困局部最小的持续失谐，找到全局最优的收敛为纯净和弦。"),
     "opt_2_simulated_annealing":   ("opt", "Simulated Annealing",   "高温时频率狂跳，冷却中逐渐收窄，偶尔的上坡接受如最后的叛逆。结晶为 A major。"),

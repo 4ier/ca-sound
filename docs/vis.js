@@ -64,6 +64,7 @@
   const sketchHalting = createHaltingSketch();
   const sketchTaste = createTasteSketch();
   const sketchSort = createSortSketch();
+  const sketchQC = createQuantumSketch();
   const sketchOpt = createOptimizationSketch();
   const sketchNT = createNumberTheorySketch();
   const sketchInfo = createInformationSketch();
@@ -82,6 +83,7 @@
     halting: sketchHalting,
     taste: sketchTaste,
     sort: sketchSort,
+    qc: sketchQC,
     opt: sketchOpt,
     nt: sketchNT,
     info: sketchInfo,
@@ -2095,6 +2097,261 @@
     }
     return { resize, draw };
   }
+  // ── Quantum Computing ──────────────────────────────────────────────────────
+  function createQuantumSketch() {
+    const s = {
+      // Bloch sphere
+      theta: 0, phi: 0, targetTheta: 0, targetPhi: 0,
+      // Entangled particles
+      particles: [],
+      // Quantum walk probability distribution
+      walkProbs: [],
+      walkCenter: 20,
+      walkSize: 41,
+      // State
+      collapseFlash: 0,
+      entangleStrength: 0,
+      walkSpread: 0,
+      gateAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      const count = clamp(Math.floor((w * h) / 18000), 16, 80);
+      s.particles = new Array(count);
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * TAU;
+        s.particles[i] = {
+          x: 0.5 + Math.cos(angle) * 0.2,
+          y: 0.5 + Math.sin(angle) * 0.2,
+          vx: 0, vy: 0,
+          phase: Math.random() * TAU,
+          paired: i % 2 === 0 ? i + 1 : i - 1,
+          glow: 0
+        };
+      }
+      // Init walk distribution: delta at center
+      s.walkProbs = new Float64Array(s.walkSize);
+      s.walkProbs[s.walkCenter] = 1.0;
+      s.theta = 0; s.phi = 0;
+      s.collapseFlash = 0;
+      s.entangleStrength = 0;
+      s.walkSpread = 0;
+      s.gateAcc = 0;
+    }
+    function draw(api) {
+      if (!s.particles.length || api.stem !== s.lastStem) {
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      const c = api.ctx;
+      const w = api.w, h = api.h;
+
+      // Update Bloch sphere angles from audio
+      s.targetTheta = Math.PI * (0.5 + bass * 0.4 - treble * 0.3);
+      s.targetPhi += api.dt * (1.2 + mid * 4 + flux * 8);
+      s.theta += (s.targetTheta - s.theta) * Math.min(1, api.dt * 3);
+      s.phi = s.targetPhi;
+
+      // Entanglement strength: builds with sustained energy
+      s.entangleStrength += (energy * 0.8 + rms * 0.5 - s.entangleStrength) * api.dt * 2;
+      s.entangleStrength = clamp(s.entangleStrength, 0, 1);
+
+      // Collapse flash on beat
+      if (beat) s.collapseFlash = 0.8 + bass * 0.4;
+      s.collapseFlash = Math.max(0, s.collapseFlash - api.dt * 2.5);
+
+      // Walk spread from audio
+      s.walkSpread += api.dt * (0.3 + energy * 2 + flux * 5);
+
+      // Gate accumulator: triggers visual gate events
+      s.gateAcc += api.dt * (0.5 + transient * 6 + flux * 3);
+
+      // Update walk distribution (quantum-like: interference creates edge peaks)
+      updateWalk(api.dt, bass, treble, beat);
+
+      // Update particles
+      updateParticles(api);
+
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+
+      // ── Layer 1: Bloch sphere wireframe (center) ──
+      const cx = w * 0.5, cy = h * 0.42;
+      const radius = Math.min(w, h) * 0.16;
+      drawBlochSphere(c, cx, cy, radius, api);
+
+      // ── Layer 2: Entangled particle pairs ──
+      drawParticles(c, w, h, api);
+
+      // ── Layer 3: Quantum walk probability bars (bottom) ──
+      drawWalkDistribution(c, w, h, api);
+
+      // ── Layer 4: Collapse flash overlay ──
+      if (s.collapseFlash > 0.01) {
+        c.fillStyle = `rgba(255,248,220,${s.collapseFlash * 0.12})`;
+        c.fillRect(0, 0, w, h);
+      }
+
+      c.restore();
+    }
+    function updateWalk(dt, bass, treble, beat) {
+      // Evolve: spread outward with interference
+      const spread = dt * (0.4 + bass * 2);
+      const newP = new Float64Array(s.walkSize);
+      for (let i = 0; i < s.walkSize; i++) {
+        const left = i > 0 ? s.walkProbs[i - 1] : 0;
+        const right = i < s.walkSize - 1 ? s.walkProbs[i + 1] : 0;
+        // Quantum-style: interference creates edge peaks
+        const dist = Math.abs(i - s.walkCenter);
+        const interference = 1 + 0.5 * Math.sin(dist * 0.8 + s.walkSpread * 2);
+        newP[i] = s.walkProbs[i] * (1 - spread) + (left + right) * spread * 0.5 * interference;
+      }
+      // Normalize
+      let sum = 0;
+      for (let i = 0; i < s.walkSize; i++) sum += newP[i];
+      if (sum > 0) for (let i = 0; i < s.walkSize; i++) newP[i] /= sum;
+      s.walkProbs = newP;
+      // Beat = measurement-like collapse: sharpen around peaks
+      if (beat) {
+        let maxI = s.walkCenter;
+        for (let i = 0; i < s.walkSize; i++) {
+          if (s.walkProbs[i] > s.walkProbs[maxI]) maxI = i;
+        }
+        for (let i = 0; i < s.walkSize; i++) {
+          const d = Math.abs(i - maxI);
+          s.walkProbs[i] *= Math.exp(-d * 0.3);
+        }
+        sum = 0;
+        for (let i = 0; i < s.walkSize; i++) sum += s.walkProbs[i];
+        if (sum > 0) for (let i = 0; i < s.walkSize; i++) s.walkProbs[i] /= sum;
+      }
+    }
+    function updateParticles(api) {
+      const { bass, mid, treble, energy, flux, transient, beat } = api.audio;
+      const dt = api.dt;
+      const cx = 0.5, cy = 0.42;
+      for (let i = 0; i < s.particles.length; i++) {
+        const p = s.particles[i];
+        p.phase += dt * (2 + treble * 6 + flux * 4);
+        // Orbit around center with entanglement pull to paired particle
+        const angle = p.phase + (i / s.particles.length) * TAU;
+        const orbitR = 0.15 + energy * 0.08 + Math.sin(p.phase * 0.3) * 0.03;
+        const tx = cx + Math.cos(angle) * orbitR;
+        const ty = cy + Math.sin(angle) * orbitR * 0.7;
+        // Entangled pull: paired particles mirror
+        const pair = s.particles[clamp(p.paired, 0, s.particles.length - 1)];
+        if (pair && s.entangleStrength > 0.1) {
+          const mirrorX = 2 * cx - pair.x;
+          const mirrorY = 2 * cy - pair.y;
+          const ent = s.entangleStrength * 0.3;
+          p.vx += (tx * (1 - ent) + mirrorX * ent - p.x) * dt * 5;
+          p.vy += (ty * (1 - ent) + mirrorY * ent - p.y) * dt * 5;
+        } else {
+          p.vx += (tx - p.x) * dt * 4;
+          p.vy += (ty - p.y) * dt * 4;
+        }
+        p.vx *= 0.92; p.vy *= 0.92;
+        p.x += p.vx * dt * 3;
+        p.y += p.vy * dt * 3;
+        // Collapse: scatter on beat
+        if (beat && Math.random() < 0.15) {
+          p.vx += (Math.random() - 0.5) * 0.5;
+          p.vy += (Math.random() - 0.5) * 0.5;
+          p.glow = 1;
+        }
+        p.glow = Math.max(0, p.glow - dt * 2.2);
+      }
+    }
+    function drawBlochSphere(c, cx, cy, r, api) {
+      const { treble, energy, rms, flux, transient } = api.audio;
+      // Sphere outline
+      c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.08 + energy * 0.15})`;
+      c.lineWidth = 1;
+      c.beginPath(); c.arc(cx, cy, r, 0, TAU); c.stroke();
+      // Equator ellipse
+      c.beginPath(); c.ellipse(cx, cy, r, r * 0.3, 0, 0, TAU); c.stroke();
+      // Meridian
+      c.beginPath(); c.ellipse(cx, cy, r * 0.3, r, 0, 0, TAU); c.stroke();
+      // |0⟩ and |1⟩ poles
+      const poleAlpha = 0.2 + rms * 0.3;
+      c.fillStyle = `rgba(180,220,255,${poleAlpha})`;
+      c.beginPath(); c.arc(cx, cy - r, 2.5, 0, TAU); c.fill();
+      c.fillStyle = `rgba(255,180,140,${poleAlpha})`;
+      c.beginPath(); c.arc(cx, cy + r, 2.5, 0, TAU); c.fill();
+      // State vector (Bloch point)
+      const stateX = cx + r * Math.sin(s.theta) * Math.cos(s.phi);
+      const stateY = cy - r * Math.cos(s.theta);
+      // Line from center to state
+      c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.25 + treble * 0.3 + flux * 0.2})`;
+      c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(cx, cy); c.lineTo(stateX, stateY); c.stroke();
+      // State point
+      const stateGlow = 3 + rms * 4 + transient * 6 + s.collapseFlash * 8;
+      c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.5 + energy * 0.3 + s.collapseFlash * 0.3})`;
+      c.beginPath(); c.arc(stateX, stateY, stateGlow, 0, TAU); c.fill();
+      // Gate ring pulse on transient
+      if (transient > 0.3 || s.collapseFlash > 0.1) {
+        const pulse = Math.max(transient, s.collapseFlash);
+        c.strokeStyle = `rgba(255,248,210,${pulse * 0.25})`;
+        c.lineWidth = 1;
+        c.beginPath(); c.arc(cx, cy, r + 6 + pulse * 12, 0, TAU); c.stroke();
+      }
+    }
+    function drawParticles(c, w, h, api) {
+      const { treble, energy, rms, flux } = api.audio;
+      for (let i = 0; i < s.particles.length; i++) {
+        const p = s.particles[i];
+        const x = p.x * w, y = p.y * h;
+        if (x < -4 || x > w + 4 || y < -4 || y > h + 4) continue;
+        const alpha = 0.12 + p.glow * 0.5 + energy * 0.1 + rms * 0.08;
+        const size = 1 + p.glow * 2.5 + treble * 0.8;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha})`;
+        c.beginPath(); c.arc(x, y, size, 0, TAU); c.fill();
+        // Entanglement lines to paired particle
+        if (s.entangleStrength > 0.15 && i % 2 === 0) {
+          const pair = s.particles[clamp(p.paired, 0, s.particles.length - 1)];
+          if (pair) {
+            c.strokeStyle = `rgba(180,200,255,${s.entangleStrength * 0.08 + flux * 0.04})`;
+            c.lineWidth = 0.5;
+            c.beginPath(); c.moveTo(x, y); c.lineTo(pair.x * w, pair.y * h); c.stroke();
+          }
+        }
+      }
+    }
+    function drawWalkDistribution(c, w, h, api) {
+      const { bass, treble, energy, rms } = api.audio;
+      const barW = w / s.walkSize;
+      const baseY = h * 0.88;
+      const maxH = h * 0.22;
+      for (let i = 0; i < s.walkSize; i++) {
+        const prob = s.walkProbs[i];
+        if (prob < 0.001) continue;
+        const barH = prob * maxH * (8 + energy * 12);
+        const x = i * barW;
+        const dist = Math.abs(i - s.walkCenter) / s.walkCenter;
+        // Edge peaks glow brighter (quantum signature)
+        const edgeGlow = dist * 0.3;
+        const alpha = 0.1 + prob * 2 + edgeGlow + rms * 0.15;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${Math.min(0.7, alpha)})`;
+        c.fillRect(x + 1, baseY - barH, Math.max(1, barW - 2), barH);
+        // Bright cap
+        if (prob > 0.05) {
+          c.fillStyle = `rgba(255,248,220,${prob * 1.5 + treble * 0.2})`;
+          c.fillRect(x + 1, baseY - barH, Math.max(1, barW - 2), 2);
+        }
+      }
+      // Center line
+      c.strokeStyle = `rgba(130,120,100,${0.06 + bass * 0.08})`;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(s.walkCenter * barW + barW * 0.5, baseY);
+      c.lineTo(s.walkCenter * barW + barW * 0.5, baseY - maxH * 0.8);
+      c.stroke();
+    }
+    return { resize, draw };
+  }
+
   function createOptimizationSketch() {
     const s = {
       particles: [],
