@@ -63,6 +63,14 @@
   const sketchBeaver = createBeaverSketch();
   const sketchHalting = createHaltingSketch();
   const sketchTaste = createTasteSketch();
+  const sketchSort = createSortSketch();
+  const sketchOpt = createOptimizationSketch();
+  const sketchNT = createNumberTheorySketch();
+  const sketchInfo = createInformationSketch();
+  const sketchGraph = createGraphSketch();
+  const sketchCrypto = createCryptoSketch();
+  const sketchConc = createConcurrencySketch();
+  const sketchAuto = createAutomataSketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
@@ -73,6 +81,14 @@
     beaver: sketchBeaver,
     halting: sketchHalting,
     taste: sketchTaste,
+    sort: sketchSort,
+    opt: sketchOpt,
+    nt: sketchNT,
+    info: sketchInfo,
+    graph: sketchGraph,
+    crypto: sketchCrypto,
+    conc: sketchConc,
+    auto: sketchAuto,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -261,6 +277,14 @@
       sketchBeaver,
       sketchHalting,
       sketchTaste,
+      sketchSort,
+      sketchOpt,
+      sketchNT,
+      sketchInfo,
+      sketchGraph,
+      sketchCrypto,
+      sketchConc,
+      sketchAuto,
       sketchRaw,
       sketchCompose,
       sketchAmbient
@@ -432,6 +456,14 @@
     if (stem.startsWith('beaver_')) return 'beaver';
     if (stem.startsWith('halting_')) return 'halting';
     if (stem.startsWith('taste_')) return 'taste';
+    if (stem.startsWith('sort_')) return 'sort';
+    if (stem.startsWith('opt_')) return 'opt';
+    if (stem.startsWith('nt_')) return 'nt';
+    if (stem.startsWith('info_')) return 'info';
+    if (stem.startsWith('graph_')) return 'graph';
+    if (stem.startsWith('crypto_')) return 'crypto';
+    if (stem.startsWith('conc_')) return 'conc';
+    if (stem.startsWith('auto_')) return 'auto';
     if (stem.startsWith('raw_')) return 'raw';
     if (stem.startsWith('rule')) return 'rule';
     return 'rule';
@@ -1133,6 +1165,1814 @@
       s.nodes.push(merged);
       s.edges.push({ a: a.id, b: merged.id, life: 1 });
       s.edges.push({ a: b.id, b: merged.id, life: 1 });
+    }
+    return { resize, draw };
+  }
+  function createSortSketch() {
+    const s = {
+      mode: 'bubble',
+      n: 0,
+      barW: 0,
+      values: null,
+      glow: null,
+      ghost: [],
+      stepAcc: 0,
+      bubbleI: 0,
+      bubbleJ: 0,
+      bubbleSwaps: 0,
+      quickStack: [],
+      quick: null,
+      mergeWidth: 1,
+      mergeLeft: 0,
+      mergeJob: null,
+      lastStem: ''
+    };
+    function resize(w) {
+      s.n = clamp(Math.floor(w / 9), 46, 168);
+      s.barW = w / s.n;
+      s.values = new Float32Array(s.n);
+      s.glow = new Float32Array(s.n);
+      for (let i = 0; i < s.n; i++) {
+        s.values[i] = (i + 1) / s.n;
+      }
+      randomize(0.65);
+      resetState();
+    }
+    function draw(api) {
+      if (!s.values || api.stem !== s.lastStem) {
+        s.mode = modeFromStem(api.stem);
+        s.lastStem = api.stem;
+        resize(api.w);
+      }
+      s.barW = api.w / s.n;
+      const a = api.audio;
+      s.stepAcc += api.dt * (9 + a.bass * 72 + a.energy * 48);
+      if (a.beat) s.stepAcc += 7 + a.transient * 36;
+      let guard = 0;
+      while (s.stepAcc >= 1 && guard < 220) {
+        stepSort(a);
+        s.stepAcc -= 1;
+        guard++;
+      }
+      for (let i = 0; i < s.n; i++) {
+        s.glow[i] = Math.max(0, s.glow[i] - api.dt * (2 + a.mid * 1.8));
+      }
+      for (let i = s.ghost.length - 1; i >= 0; i--) {
+        const g = s.ghost[i];
+        g.life -= api.dt * 3.2;
+        if (g.life <= 0) s.ghost.splice(i, 1);
+      }
+      const c = api.ctx;
+      const top = api.h * 0.14;
+      const baseY = api.h * 0.92;
+      const maxH = api.h * 0.74;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = 'rgba(205,195,170,0.08)';
+      c.fillRect(0, baseY, api.w, 1);
+      for (let i = 0; i < s.ghost.length; i++) {
+        const g = s.ghost[i];
+        const x0 = (g.from + 0.5) * s.barW;
+        const x1 = (g.to + 0.5) * s.barW;
+        const y = baseY - g.v * maxH;
+        c.strokeStyle = `rgba(244,225,184,${g.life * (0.12 + a.treble * 0.2)})`;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(x0, y);
+        c.lineTo(x1, y);
+        c.stroke();
+      }
+      for (let i = 0; i < s.n; i++) {
+        const x = i * s.barW;
+        const v = s.values[i];
+        const h = v * maxH;
+        const y = baseY - h;
+        const glow = s.glow[i];
+        c.fillStyle = `rgba(180,168,138,${0.06 + v * 0.12})`;
+        c.fillRect(x + 1, top, Math.max(1, s.barW - 2), baseY - top);
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.14 + a.energy * 0.22 + glow * 0.45})`;
+        c.fillRect(x + 1, y, Math.max(1, s.barW - 2), h);
+        c.fillStyle = `rgba(255,242,204,${0.06 + glow * (0.35 + a.treble * 0.35)})`;
+        c.fillRect(x + 1, y - 1.3, Math.max(1, s.barW - 2), 1.3);
+      }
+      if (s.mode === 'quick' && s.quick) {
+        c.strokeStyle = `rgba(255,229,170,${0.18 + a.energy * 0.28})`;
+        c.lineWidth = 1;
+        const q = s.quick;
+        const x0 = q.lo * s.barW;
+        const x1 = (q.hi + 1) * s.barW;
+        c.strokeRect(x0, top, x1 - x0, baseY - top);
+        c.fillStyle = `rgba(255,245,215,${0.3 + a.treble * 0.35})`;
+        c.fillRect(q.pivot * s.barW + 1, top, Math.max(2, s.barW - 2), baseY - top);
+      }
+      if (s.mode === 'merge' && s.mergeJob) {
+        const m = s.mergeJob;
+        const x0 = m.left * s.barW;
+        const x1 = m.right * s.barW;
+        c.fillStyle = `rgba(210,190,145,${0.05 + a.mid * 0.2})`;
+        c.fillRect(x0, top, x1 - x0, baseY - top);
+      }
+      c.restore();
+    }
+    function stepSort(audio) {
+      if (s.mode === 'quick') stepQuick(audio);
+      else if (s.mode === 'merge') stepMerge(audio);
+      else stepBubble(audio);
+    }
+    function stepBubble(audio) {
+      if (s.bubbleI >= s.n - 1) {
+        randomize(0.2 + audio.transient * 0.6);
+        s.bubbleI = 0;
+        s.bubbleJ = 0;
+        s.bubbleSwaps = 0;
+        return;
+      }
+      const j = s.bubbleJ;
+      const k = j + 1;
+      if (k >= s.n - s.bubbleI) {
+        if (s.bubbleSwaps === 0) {
+          randomize(0.1 + audio.energy * 0.3);
+          s.bubbleI = 0;
+        } else {
+          s.bubbleI++;
+        }
+        s.bubbleJ = 0;
+        s.bubbleSwaps = 0;
+        return;
+      }
+      s.glow[j] = 1;
+      s.glow[k] = 1;
+      const shouldSwap = s.values[j] > s.values[k] || Math.random() < audio.bass * 0.035;
+      if (shouldSwap) {
+        swapBars(j, k, 1);
+        s.bubbleSwaps++;
+      }
+      if (audio.beat && Math.random() < 0.26) {
+        const idx = (Math.random() * s.n) | 0;
+        s.glow[idx] = 1;
+      }
+      s.bubbleJ++;
+    }
+    function stepQuick(audio) {
+      if (!s.quick) {
+        while (s.quickStack.length) {
+          const seg = s.quickStack.pop();
+          if (seg && seg[1] - seg[0] >= 1) {
+            s.quick = { lo: seg[0], hi: seg[1], i: seg[0], j: seg[0], pivot: seg[1] };
+            break;
+          }
+        }
+        if (!s.quick) {
+          randomize(0.24 + audio.energy * 0.4);
+          s.quickStack.push([0, s.n - 1]);
+        }
+        return;
+      }
+      const q = s.quick;
+      s.glow[q.pivot] = 1;
+      if (q.j < q.hi) {
+        s.glow[q.j] = 1;
+        const pivotV = s.values[q.pivot];
+        if (s.values[q.j] <= pivotV || Math.random() < audio.transient * 0.09) {
+          if (q.i !== q.j) swapBars(q.i, q.j, 0.9);
+          q.i++;
+        }
+        q.j++;
+        return;
+      }
+      if (q.i !== q.pivot) swapBars(q.i, q.pivot, 1);
+      const p = q.i;
+      if (p - 1 > q.lo) s.quickStack.push([q.lo, p - 1]);
+      if (p + 1 < q.hi) s.quickStack.push([p + 1, q.hi]);
+      s.quick = null;
+      if (audio.beat) {
+        const lo = clamp(p - 2, 0, s.n - 1);
+        const hi = clamp(p + 2, 0, s.n - 1);
+        for (let i = lo; i <= hi; i++) s.glow[i] = 1;
+      }
+    }
+    function stepMerge(audio) {
+      if (!s.mergeJob) {
+        if (s.mergeLeft >= s.n) {
+          s.mergeLeft = 0;
+          s.mergeWidth *= 2;
+          if (s.mergeWidth >= s.n) {
+            randomize(0.32 + audio.bass * 0.4);
+            s.mergeWidth = 1;
+          }
+        }
+        const left = s.mergeLeft;
+        const mid = Math.min(left + s.mergeWidth, s.n);
+        const right = Math.min(left + s.mergeWidth * 2, s.n);
+        if (mid >= right) {
+          s.mergeLeft += s.mergeWidth * 2;
+          return;
+        }
+        s.mergeJob = {
+          left,
+          right,
+          k: left,
+          temp: Array.from(s.values.slice(left, right)),
+          midOff: mid - left,
+          li: 0,
+          ri: mid - left,
+          end: right - left
+        };
+      }
+      const m = s.mergeJob;
+      const takeLeft = m.li < m.midOff && (m.ri >= m.end || m.temp[m.li] <= m.temp[m.ri] || Math.random() < audio.bass * 0.03);
+      const from = takeLeft ? m.li++ : m.ri++;
+      s.values[m.k] = m.temp[from];
+      s.glow[m.k] = 1;
+      if (!takeLeft) s.glow[m.left + from] = Math.max(s.glow[m.left + from], 0.35);
+      m.k++;
+      if (m.k >= m.right) {
+        s.mergeLeft += s.mergeWidth * 2;
+        s.mergeJob = null;
+      }
+    }
+    function swapBars(i, j, glow) {
+      const vi = s.values[i];
+      const vj = s.values[j];
+      s.values[i] = vj;
+      s.values[j] = vi;
+      s.glow[i] = Math.max(s.glow[i], glow);
+      s.glow[j] = Math.max(s.glow[j], glow);
+      s.ghost.push({ from: i, to: j, v: vj, life: 1 });
+      s.ghost.push({ from: j, to: i, v: vi, life: 1 });
+      if (s.ghost.length > 80) s.ghost.splice(0, s.ghost.length - 80);
+    }
+    function randomize(strength) {
+      if (!s.values) return;
+      const swaps = Math.max(6, Math.floor(s.n * (0.3 + strength)));
+      for (let n = 0; n < swaps; n++) {
+        const i = (Math.random() * s.n) | 0;
+        const j = (Math.random() * s.n) | 0;
+        const tmp = s.values[i];
+        s.values[i] = s.values[j];
+        s.values[j] = tmp;
+      }
+      for (let i = 0; i < s.n; i++) s.glow[i] = Math.max(s.glow[i], strength * 0.35);
+    }
+    function resetState() {
+      s.stepAcc = 0;
+      s.bubbleI = 0;
+      s.bubbleJ = 0;
+      s.bubbleSwaps = 0;
+      s.quickStack = [[0, s.n - 1]];
+      s.quick = null;
+      s.mergeWidth = 1;
+      s.mergeLeft = 0;
+      s.mergeJob = null;
+      s.ghost = [];
+    }
+    function modeFromStem(stem) {
+      if (/quick/i.test(stem || '')) return 'quick';
+      if (/merge/i.test(stem || '')) return 'merge';
+      return 'bubble';
+    }
+    return { resize, draw };
+  }
+  function createConcurrencySketch() {
+    const s = {
+      mode: 'dining',
+      dining: null,
+      race: null,
+      mutex: null,
+      lockX: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      s.lockX = w * 0.58;
+      s.dining = {
+        philosophers: new Array(5).fill(0).map(() => ({
+          state: 'thinking',
+          timer: 0.3 + Math.random() * 1.5,
+          pulse: 0,
+          wait: 0
+        })),
+        forks: new Int8Array(5).fill(-1),
+        deadlock: 0
+      };
+      s.race = {
+        threads: new Array(3).fill(0).map((_, lane) => ({
+          lane,
+          progress: Math.random() * 0.26,
+          speed: 0.18 + Math.random() * 0.26,
+          flash: 0
+        })),
+        contention: 0,
+        glitch: 0
+      };
+      s.mutex = {
+        threads: new Array(4).fill(0).map((_, lane) => ({
+          lane,
+          phase: 'rest',
+          timer: 0.3 + Math.random() * 1.2,
+          x: w * 0.16,
+          pulse: 0,
+          criticalDur: 0.6
+        })),
+        lockOwner: -1,
+        queue: [],
+        lockPulse: 0
+      };
+      for (let i = 0; i < s.mutex.threads.length; i++) {
+        s.mutex.threads[i].x = w * (0.13 + i * 0.05);
+      }
+      void h;
+    }
+    function draw(api) {
+      if (!s.dining || api.stem !== s.lastStem) {
+        s.mode = modeFromStem(api.stem);
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      if (s.mode === 'race') {
+        updateRace(api);
+        drawRace(api);
+      } else if (s.mode === 'mutex') {
+        updateMutex(api);
+        drawMutex(api);
+      } else {
+        updateDining(api);
+        drawDining(api);
+      }
+    }
+    function updateDining(api) {
+      const d = s.dining;
+      const a = api.audio;
+      let eating = 0;
+      let hungry = 0;
+      for (let i = 0; i < d.philosophers.length; i++) {
+        const p = d.philosophers[i];
+        p.pulse = Math.max(0, p.pulse - api.dt * 2.8);
+        if (p.state === 'thinking') {
+          p.timer -= api.dt * (0.8 + a.mid * 1.4);
+          if (p.timer <= 0) {
+            p.state = 'hungry';
+            p.timer = 0.5 + Math.random() * 0.9;
+            p.wait = 0;
+          }
+        } else if (p.state === 'hungry') {
+          hungry++;
+          p.wait += api.dt;
+          if (tryAcquireForks(i)) {
+            p.state = 'eating';
+            p.timer = 0.35 + (0.4 + a.bass) * (0.65 + Math.random() * 0.4);
+            p.pulse = 1;
+          }
+        } else {
+          eating++;
+          p.timer -= api.dt * (0.7 + a.energy * 0.7);
+          if (p.timer <= 0) {
+            releaseForks(i);
+            p.state = 'thinking';
+            p.timer = 0.5 + Math.random() * 1.2;
+          }
+        }
+      }
+      if (eating === 0 && hungry === d.philosophers.length) d.deadlock += api.dt;
+      else d.deadlock = Math.max(0, d.deadlock - api.dt * 2.2);
+      if (a.beat && d.deadlock > 1.3) {
+        const pick = (Math.random() * d.philosophers.length) | 0;
+        releaseForks(pick);
+        d.philosophers[pick].state = 'thinking';
+        d.philosophers[pick].timer = 0.45;
+        d.deadlock *= 0.35;
+      }
+    }
+    function drawDining(api) {
+      const c = api.ctx;
+      const a = api.audio;
+      const d = s.dining;
+      const cx = api.w * 0.5;
+      const cy = api.h * 0.56;
+      const tableR = Math.min(api.w, api.h) * 0.16;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `rgba(140,128,104,${0.08 + a.energy * 0.12})`;
+      c.beginPath();
+      c.arc(cx, cy, tableR, 0, TAU);
+      c.fill();
+      for (let f = 0; f < 5; f++) {
+        const ang = -Math.PI / 2 + (f + 0.5) * (TAU / 5);
+        const fx = cx + Math.cos(ang) * tableR * 0.92;
+        const fy = cy + Math.sin(ang) * tableR * 0.92;
+        const held = d.forks[f] >= 0;
+        c.strokeStyle = held
+          ? `rgba(255,238,188,${0.32 + a.treble * 0.4})`
+          : 'rgba(180,168,142,0.14)';
+        c.lineWidth = held ? 2.1 : 1.2;
+        c.beginPath();
+        c.moveTo(fx - Math.sin(ang) * 6, fy + Math.cos(ang) * 6);
+        c.lineTo(fx + Math.sin(ang) * 6, fy - Math.cos(ang) * 6);
+        c.stroke();
+      }
+      for (let i = 0; i < d.philosophers.length; i++) {
+        const p = d.philosophers[i];
+        const ang = -Math.PI / 2 + i * (TAU / 5);
+        const px = cx + Math.cos(ang) * tableR * 1.48;
+        const py = cy + Math.sin(ang) * tableR * 1.48;
+        const hungry = p.state === 'hungry';
+        const eating = p.state === 'eating';
+        const alpha = eating ? 0.44 + p.pulse * 0.4 : hungry ? 0.22 + p.wait * 0.12 : 0.13;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha})`;
+        c.beginPath();
+        c.arc(px, py, 9 + p.pulse * 7, 0, TAU);
+        c.fill();
+        if (hungry) {
+          c.strokeStyle = `rgba(255,232,180,${0.08 + Math.min(0.32, p.wait * 0.14)})`;
+          c.lineWidth = 1;
+          c.beginPath();
+          c.arc(px, py, 14 + p.wait * 8, 0, TAU);
+          c.stroke();
+        }
+      }
+      if (d.deadlock > 0.35) {
+        c.strokeStyle = `rgba(255,211,140,${Math.min(0.42, d.deadlock * 0.24)})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(cx, cy, tableR * (1.08 + d.deadlock * 0.1), 0, TAU);
+        c.stroke();
+      }
+      c.restore();
+    }
+    function tryAcquireForks(i) {
+      const d = s.dining;
+      const left = i;
+      const right = (i + 1) % d.forks.length;
+      if (d.forks[left] !== -1 || d.forks[right] !== -1) return false;
+      d.forks[left] = i;
+      d.forks[right] = i;
+      return true;
+    }
+    function releaseForks(i) {
+      const d = s.dining;
+      const left = i;
+      const right = (i + 1) % d.forks.length;
+      if (d.forks[left] === i) d.forks[left] = -1;
+      if (d.forks[right] === i) d.forks[right] = -1;
+    }
+    function updateRace(api) {
+      const r = s.race;
+      const a = api.audio;
+      const critical0 = 0.64;
+      const critical1 = 0.78;
+      let colliding = 0;
+      for (let i = 0; i < r.threads.length; i++) {
+        const t = r.threads[i];
+        t.flash = Math.max(0, t.flash - api.dt * 3);
+        const burst = a.beat && i === ((api.ts * 0.001) | 0) % r.threads.length ? 0.8 : 0;
+        t.progress += api.dt * (0.08 + t.speed * (0.7 + a.bass * 0.9 + burst));
+        if (t.progress >= 1.04) {
+          t.progress = Math.random() * 0.06;
+          t.speed = 0.18 + Math.random() * 0.3;
+          t.flash = 1;
+        }
+        if (t.progress > critical0 && t.progress < critical1) colliding++;
+      }
+      if (colliding > 1) {
+        r.contention = Math.min(1, r.contention + api.dt * (1.8 + a.transient * 8));
+        r.glitch = Math.min(1, r.glitch + api.dt * 3.2);
+      } else {
+        r.contention = Math.max(0, r.contention - api.dt * 2.4);
+        r.glitch = Math.max(0, r.glitch - api.dt * 4.2);
+      }
+    }
+    function drawRace(api) {
+      const c = api.ctx;
+      const a = api.audio;
+      const r = s.race;
+      const margin = api.w * 0.1;
+      const targetX = api.w * 0.78;
+      const laneGap = api.h * 0.15;
+      const y0 = api.h * 0.36;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `rgba(200,180,145,${0.08 + r.contention * 0.28})`;
+      c.fillRect(targetX - 7, api.h * 0.22, 14, api.h * 0.56);
+      for (let i = 0; i < r.threads.length; i++) {
+        const y = y0 + i * laneGap;
+        c.strokeStyle = 'rgba(175,163,139,0.1)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(margin, y);
+        c.lineTo(targetX, api.h * 0.5);
+        c.stroke();
+        const t = r.threads[i];
+        const x = margin + t.progress * (targetX - margin);
+        const jitter = r.glitch > 0 ? (Math.random() - 0.5) * 15 * r.glitch : 0;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.25 + t.flash * 0.5 + a.energy * 0.2})`;
+        c.beginPath();
+        c.arc(x + jitter, y + jitter * 0.2, 6 + t.flash * 3, 0, TAU);
+        c.fill();
+      }
+      if (r.contention > 0.04) {
+        for (let i = 0; i < 12; i++) {
+          const yy = api.h * (0.28 + Math.random() * 0.44);
+          const dx = (Math.random() - 0.5) * 24 * r.glitch;
+          c.strokeStyle = `rgba(255,232,176,${0.12 + r.contention * 0.35})`;
+          c.beginPath();
+          c.moveTo(targetX - 10 + dx, yy);
+          c.lineTo(targetX + 10 - dx, yy + (Math.random() - 0.5) * 12);
+          c.stroke();
+        }
+      }
+      c.restore();
+    }
+    function updateMutex(api) {
+      const m = s.mutex;
+      const a = api.audio;
+      for (let i = 0; i < m.threads.length; i++) {
+        const t = m.threads[i];
+        t.pulse = Math.max(0, t.pulse - api.dt * 2.4);
+        if (t.phase === 'rest') {
+          t.timer -= api.dt * (0.7 + a.mid * 1.1);
+          if (t.timer <= 0) {
+            t.phase = 'wait';
+            t.pulse = 1;
+            if (!m.queue.includes(i)) m.queue.push(i);
+          }
+        } else if (t.phase === 'critical') {
+          t.timer -= api.dt * (0.85 + a.bass * 0.85);
+          if (t.timer <= 0) {
+            t.phase = 'rest';
+            t.timer = 0.35 + Math.random() * 1.2;
+            if (m.lockOwner === i) m.lockOwner = -1;
+          }
+        }
+      }
+      if (m.lockOwner < 0 && m.queue.length) {
+        const next = m.queue.shift();
+        const t = m.threads[next];
+        t.phase = 'critical';
+        t.criticalDur = 0.38 + Math.random() * 0.46;
+        t.timer = t.criticalDur;
+        t.pulse = 1;
+        m.lockOwner = next;
+        m.lockPulse = 1;
+      }
+      m.lockPulse = Math.max(0, m.lockPulse - api.dt * 2.8);
+      for (let i = 0; i < m.threads.length; i++) {
+        const t = m.threads[i];
+        const laneY = api.h * (0.28 + i * 0.16);
+        void laneY;
+        let tx = api.w * 0.16;
+        if (t.phase === 'wait') tx = s.lockX - 18;
+        else if (t.phase === 'critical') {
+          const p = 1 - t.timer / Math.max(0.001, t.criticalDur);
+          tx = s.lockX + 12 + p * 74;
+        }
+        t.x += (tx - t.x) * Math.min(1, api.dt * 8.2);
+      }
+      if (a.beat && Math.random() < 0.35) {
+        const i = (Math.random() * m.threads.length) | 0;
+        const t = m.threads[i];
+        if (t.phase === 'rest' && !m.queue.includes(i)) {
+          t.phase = 'wait';
+          t.timer = 0.1;
+          m.queue.push(i);
+        }
+      }
+    }
+    function drawMutex(api) {
+      const c = api.ctx;
+      const a = api.audio;
+      const m = s.mutex;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `rgba(198,175,136,${0.1 + m.lockPulse * 0.3})`;
+      c.fillRect(s.lockX - 9, api.h * 0.18, 18, api.h * 0.64);
+      for (let i = 0; i < m.threads.length; i++) {
+        const t = m.threads[i];
+        const y = api.h * (0.28 + i * 0.16);
+        c.strokeStyle = 'rgba(175,163,139,0.08)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(api.w * 0.12, y);
+        c.lineTo(api.w * 0.86, y);
+        c.stroke();
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.16 + a.energy * 0.16 + t.pulse * 0.45})`;
+        c.beginPath();
+        c.arc(t.x, y, 5 + t.pulse * 2.5, 0, TAU);
+        c.fill();
+      }
+      for (let q = 0; q < m.queue.length; q++) {
+        const idx = m.queue[q];
+        const y = api.h * (0.28 + idx * 0.16);
+        c.fillStyle = `rgba(255,235,190,${0.08 + (1 - q / Math.max(1, m.queue.length)) * 0.22})`;
+        c.fillRect(s.lockX - 30 - q * 7, y - 1, 5, 2);
+      }
+      c.restore();
+    }
+    function modeFromStem(stem) {
+      if (/race/i.test(stem || '')) return 'race';
+      if (/mutex/i.test(stem || '')) return 'mutex';
+      return 'dining';
+    }
+    return { resize, draw };
+  }
+  function createGraphSketch() {
+    const s = {
+      mode: 'dijkstra',
+      nodes: [],
+      edges: [],
+      adj: [],
+      heat: [],
+      visited: [],
+      dist: [],
+      prev: [],
+      settled: [],
+      queue: [],
+      stack: [],
+      open: [],
+      current: -1,
+      source: 0,
+      pulses: [],
+      stepAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      initGraph(w, h);
+      resetTraversal();
+    }
+    function draw(api) {
+      if (!s.nodes.length || api.stem !== s.lastStem) {
+        s.mode = modeFromStem(api.stem);
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const a = api.audio;
+      simulateLayout(api);
+      s.stepAcc += api.dt * (1.6 + a.energy * 4.6 + a.bass * 3.6);
+      if (a.beat) s.stepAcc += 1.2 + a.transient * 6;
+      let guard = 0;
+      while (s.stepAcc >= 1 && guard < 16) {
+        traversalStep(a);
+        s.stepAcc -= 1;
+        guard++;
+      }
+      for (let i = 0; i < s.heat.length; i++) {
+        s.heat[i] = Math.max(0, s.heat[i] - api.dt * 0.62);
+      }
+      for (let i = s.pulses.length - 1; i >= 0; i--) {
+        s.pulses[i].life -= api.dt * 2.2;
+        if (s.pulses[i].life <= 0) s.pulses.splice(i, 1);
+      }
+      const c = api.ctx;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      for (let ei = 0; ei < s.edges.length; ei++) {
+        const e = s.edges[ei];
+        const aNode = s.nodes[e.a];
+        const bNode = s.nodes[e.b];
+        const seen = s.visited[e.a] || s.visited[e.b];
+        c.strokeStyle = seen ? 'rgba(196,176,142,0.14)' : 'rgba(150,148,142,0.08)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(aNode.x, aNode.y);
+        c.lineTo(bNode.x, bNode.y);
+        c.stroke();
+      }
+      for (let i = 0; i < s.pulses.length; i++) {
+        const p = s.pulses[i];
+        const e = s.edges[p.edge];
+        if (!e) continue;
+        const aNode = s.nodes[e.a];
+        const bNode = s.nodes[e.b];
+        c.strokeStyle = `rgba(255,230,175,${p.life * (0.22 + p.power * 0.35)})`;
+        c.lineWidth = 1.4 + p.power * 1.2;
+        c.beginPath();
+        c.moveTo(aNode.x, aNode.y);
+        c.lineTo(bNode.x, bNode.y);
+        c.stroke();
+      }
+      for (let i = 0; i < s.nodes.length; i++) {
+        const n = s.nodes[i];
+        const heat = s.heat[i];
+        const active = s.current === i;
+        const base = s.visited[i] ? 0.2 : 0.08;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${base + heat * 0.45 + (active ? 0.3 : 0)})`;
+        c.beginPath();
+        c.arc(n.x, n.y, 3.5 + heat * 4 + (active ? 3 : 0), 0, TAU);
+        c.fill();
+      }
+      c.restore();
+    }
+    function initGraph(w, h) {
+      const count = clamp(Math.floor((w * h) / 29000), 18, 40);
+      s.nodes = [];
+      s.edges = [];
+      s.adj = new Array(count);
+      for (let i = 0; i < count; i++) s.adj[i] = [];
+      for (let i = 0; i < count; i++) {
+        s.nodes.push({
+          x: w * (0.18 + Math.random() * 0.64),
+          y: h * (0.2 + Math.random() * 0.6),
+          vx: 0,
+          vy: 0
+        });
+      }
+      const maxDist = Math.min(w, h) * 0.34;
+      const maxDistSq = maxDist * maxDist;
+      for (let i = 0; i < count; i++) {
+        for (let j = i + 1; j < count; j++) {
+          const dx = s.nodes[i].x - s.nodes[j].x;
+          const dy = s.nodes[i].y - s.nodes[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > maxDistSq) continue;
+          const near = 1 - d2 / maxDistSq;
+          if (Math.random() < 0.06 + near * 0.25) addEdge(i, j, 0.8 + Math.sqrt(d2) / 80);
+        }
+      }
+      for (let i = 0; i < count; i++) {
+        if (s.adj[i].length > 0) continue;
+        let best = -1;
+        let bestD = Infinity;
+        for (let j = 0; j < count; j++) {
+          if (i === j) continue;
+          const dx = s.nodes[i].x - s.nodes[j].x;
+          const dy = s.nodes[i].y - s.nodes[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < bestD) {
+            bestD = d2;
+            best = j;
+          }
+        }
+        if (best >= 0) addEdge(i, best, 0.8 + Math.sqrt(bestD) / 80);
+      }
+      s.heat = new Array(count).fill(0);
+      s.visited = new Array(count).fill(0);
+      s.dist = new Array(count).fill(Infinity);
+      s.prev = new Array(count).fill(-1);
+      s.settled = new Array(count).fill(0);
+      s.queue = [];
+      s.stack = [];
+      s.open = [];
+      s.pulses = [];
+      s.current = -1;
+      s.stepAcc = 0;
+    }
+    function addEdge(a, b, w) {
+      for (let i = 0; i < s.adj[a].length; i++) {
+        if (s.adj[a][i].to === b) return;
+      }
+      const idx = s.edges.length;
+      s.edges.push({ a, b, w });
+      s.adj[a].push({ to: b, edge: idx });
+      s.adj[b].push({ to: a, edge: idx });
+    }
+    function simulateLayout(api) {
+      const a = api.audio;
+      const nodes = s.nodes;
+      const repulse = 5400 * (0.7 + a.treble * 0.8);
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const n0 = nodes[i];
+          const n1 = nodes[j];
+          let dx = n1.x - n0.x;
+          let dy = n1.y - n0.y;
+          const d2 = dx * dx + dy * dy + 60;
+          const f = repulse / d2;
+          const inv = 1 / Math.sqrt(d2);
+          dx *= inv;
+          dy *= inv;
+          n0.vx -= dx * f * api.dt;
+          n0.vy -= dy * f * api.dt;
+          n1.vx += dx * f * api.dt;
+          n1.vy += dy * f * api.dt;
+        }
+      }
+      for (let i = 0; i < s.edges.length; i++) {
+        const e = s.edges[i];
+        const n0 = nodes[e.a];
+        const n1 = nodes[e.b];
+        const dx = n1.x - n0.x;
+        const dy = n1.y - n0.y;
+        const d = Math.sqrt(dx * dx + dy * dy) + 0.001;
+        const target = 70 + e.w * 8;
+        const pull = (d - target) * (0.006 + a.energy * 0.007);
+        const ux = dx / d;
+        const uy = dy / d;
+        n0.vx += ux * pull;
+        n0.vy += uy * pull;
+        n1.vx -= ux * pull;
+        n1.vy -= uy * pull;
+      }
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        n.vx += (api.w * 0.5 - n.x) * api.dt * 0.06;
+        n.vy += (api.h * 0.5 - n.y) * api.dt * 0.06;
+        n.vx *= 0.92;
+        n.vy *= 0.92;
+        n.x += n.vx * 34 * api.dt;
+        n.y += n.vy * 34 * api.dt;
+        n.x = clamp(n.x, 26, api.w - 26);
+        n.y = clamp(n.y, 26, api.h - 26);
+      }
+    }
+    function traversalStep(audio) {
+      if (s.mode === 'bfs') stepBfs();
+      else if (s.mode === 'dfs') stepDfs();
+      else stepDijkstra(audio);
+    }
+    function stepBfs() {
+      if (!s.queue.length) {
+        resetTraversal();
+        return;
+      }
+      const node = s.queue.shift();
+      s.current = node;
+      s.heat[node] = 1;
+      const neighbors = s.adj[node];
+      for (let i = 0; i < neighbors.length; i++) {
+        const n = neighbors[i];
+        if (s.visited[n.to]) continue;
+        s.visited[n.to] = 1;
+        s.queue.push(n.to);
+        s.prev[n.to] = node;
+        pulseEdge(n.edge, 0.7);
+      }
+    }
+    function stepDfs() {
+      if (!s.stack.length) {
+        resetTraversal();
+        return;
+      }
+      const node = s.current < 0 ? s.stack[s.stack.length - 1] : s.current;
+      const neighbors = s.adj[node];
+      let picked = null;
+      for (let i = 0; i < neighbors.length; i++) {
+        const n = neighbors[(i + ((Math.random() * neighbors.length) | 0)) % neighbors.length];
+        if (!s.visited[n.to]) {
+          picked = n;
+          break;
+        }
+      }
+      if (picked) {
+        s.current = picked.to;
+        s.visited[picked.to] = 1;
+        s.heat[picked.to] = 1;
+        s.stack.push(picked.to);
+        s.prev[picked.to] = node;
+        pulseEdge(picked.edge, 1);
+      } else if (s.stack.length > 1) {
+        const from = s.stack.pop();
+        const to = s.stack[s.stack.length - 1];
+        s.current = to;
+        const edge = edgeBetween(from, to);
+        if (edge >= 0) pulseEdge(edge, 0.45);
+      } else {
+        resetTraversal();
+      }
+    }
+    function stepDijkstra(audio) {
+      if (!s.open.length) {
+        resetTraversal();
+        return;
+      }
+      let bestIdx = 0;
+      for (let i = 1; i < s.open.length; i++) {
+        if (s.dist[s.open[i]] < s.dist[s.open[bestIdx]]) bestIdx = i;
+      }
+      const node = s.open.splice(bestIdx, 1)[0];
+      if (s.settled[node]) return;
+      s.settled[node] = 1;
+      s.visited[node] = 1;
+      s.heat[node] = 1;
+      s.current = node;
+      const neighbors = s.adj[node];
+      for (let i = 0; i < neighbors.length; i++) {
+        const n = neighbors[i];
+        if (s.settled[n.to]) continue;
+        const alt = s.dist[node] + s.edges[n.edge].w * (1 + audio.treble * 0.2);
+        if (alt < s.dist[n.to]) {
+          s.dist[n.to] = alt;
+          s.prev[n.to] = node;
+          if (!s.open.includes(n.to)) s.open.push(n.to);
+          pulseEdge(n.edge, 0.85);
+        }
+      }
+    }
+    function pulseEdge(edge, power) {
+      s.pulses.push({ edge, life: 1, power });
+      if (s.pulses.length > 120) s.pulses.splice(0, s.pulses.length - 120);
+    }
+    function edgeBetween(a, b) {
+      const list = s.adj[a];
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].to === b) return list[i].edge;
+      }
+      return -1;
+    }
+    function resetTraversal() {
+      s.source = (Math.random() * s.nodes.length) | 0;
+      s.current = s.source;
+      s.visited.fill(0);
+      s.dist.fill(Infinity);
+      s.prev.fill(-1);
+      s.settled.fill(0);
+      s.queue.length = 0;
+      s.stack.length = 0;
+      s.open.length = 0;
+      s.heat.fill(0);
+      s.visited[s.source] = 1;
+      s.heat[s.source] = 1;
+      if (s.mode === 'bfs') {
+        s.queue.push(s.source);
+      } else if (s.mode === 'dfs') {
+        s.stack.push(s.source);
+      } else {
+        s.dist[s.source] = 0;
+        s.open.push(s.source);
+      }
+    }
+    function modeFromStem(stem) {
+      if (/bfs/i.test(stem || '')) return 'bfs';
+      if (/dfs/i.test(stem || '')) return 'dfs';
+      return 'dijkstra';
+    }
+    return { resize, draw };
+  }
+  function createOptimizationSketch() {
+    const s = {
+      particles: [],
+      wells: [],
+      gridW: 0,
+      gridH: 0,
+      temp: 0.6,
+      phase: 0,
+      contourPhase: 0,
+      stepAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      s.gridW = clamp(Math.floor(w / 22), 30, 74);
+      s.gridH = clamp(Math.floor(h / 24), 22, 54);
+      s.wells = [
+        { x: -0.58, y: 0.32, depth: 0.95, ax: 7.8, ay: 9.5 },
+        { x: 0.48, y: -0.42, depth: 0.78, ax: 8.2, ay: 8.8 },
+        { x: 0.03, y: 0.06, depth: 0.64, ax: 11.6, ay: 10.4 }
+      ];
+      const count = clamp(Math.floor((w * h) / 23000), 22, 70);
+      s.particles = new Array(count);
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * 2 - 1;
+        const y = Math.random() * 2 - 1;
+        s.particles[i] = {
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          bestX: x,
+          bestY: y,
+          bestVal: landscape(x, y, 0),
+          glow: Math.random() * 0.4
+        };
+      }
+      s.temp = 0.62;
+      s.phase = Math.random() * TAU;
+      s.contourPhase = Math.random();
+      s.stepAcc = 0;
+      void h;
+    }
+    function draw(api) {
+      if (!s.particles.length || api.stem !== s.lastStem) {
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      s.phase += api.dt * (0.34 + treble * 1.8 + flux * 3.2);
+      s.contourPhase += api.dt * (0.28 + mid * 0.9 + rms * 0.6);
+      s.temp += (0.09 + energy * 0.42 + rms * 0.35 - s.temp) * Math.min(1, api.dt * 1.4);
+      s.temp += transient * api.dt * 3.2;
+      if (beat) s.temp = Math.min(1.65, s.temp + 0.24 + bass * 0.5);
+      s.temp = clamp(s.temp - api.dt * (0.06 + mid * 0.08), 0.02, 1.65);
+      s.stepAcc += api.dt * (4 + energy * 14 + bass * 8 + flux * 22);
+      let guard = 0;
+      while (s.stepAcc >= 1 && guard < 24) {
+        stepParticles(api.audio, 0.016 + api.dt * 0.35);
+        s.stepAcc -= 1;
+        guard++;
+      }
+      const c = api.ctx;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      const heat = c.createLinearGradient(0, 0, 0, api.h);
+      heat.addColorStop(0, `rgba(223,165,87,${0.05 + s.temp * 0.16})`);
+      heat.addColorStop(0.55, `rgba(100,84,52,${0.03 + energy * 0.08})`);
+      heat.addColorStop(1, 'rgba(12,11,10,0.02)');
+      c.fillStyle = heat;
+      c.fillRect(0, 0, api.w, api.h);
+      drawContours(api);
+      for (let i = 0; i < s.wells.length; i++) {
+        const w = s.wells[i];
+        const x = (w.x * 0.5 + 0.5) * api.w;
+        const y = (w.y * 0.5 + 0.5) * api.h;
+        c.strokeStyle = `rgba(255,232,180,${0.05 + transient * 0.25})`;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.arc(x, y, 8 + (w.depth * 14 + bass * 9), 0, TAU);
+        c.stroke();
+      }
+      for (let i = 0; i < s.particles.length; i++) {
+        const p = s.particles[i];
+        const x = (p.x * 0.5 + 0.5) * api.w;
+        const y = (p.y * 0.5 + 0.5) * api.h;
+        const bx = (p.bestX * 0.5 + 0.5) * api.w;
+        const by = (p.bestY * 0.5 + 0.5) * api.h;
+        c.strokeStyle = `rgba(255,224,164,${0.03 + p.glow * 0.22 + flux * 0.08})`;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(x, y);
+        c.lineTo(bx, by);
+        c.stroke();
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.15 + p.glow * 0.5 + treble * 0.18})`;
+        c.beginPath();
+        c.arc(x, y, 1.2 + p.glow * 3 + rms * 2.1, 0, TAU);
+        c.fill();
+      }
+      c.restore();
+    }
+    function drawContours(api) {
+      const c = api.ctx;
+      const { treble, energy } = api.audio;
+      const stepX = api.w / Math.max(1, s.gridW - 1);
+      const stepY = api.h / Math.max(1, s.gridH - 1);
+      for (let gy = 0; gy < s.gridH; gy++) {
+        const ny = (gy / Math.max(1, s.gridH - 1)) * 2 - 1;
+        for (let gx = 0; gx < s.gridW; gx++) {
+          const nx = (gx / Math.max(1, s.gridW - 1)) * 2 - 1;
+          const z = landscape(nx, ny, s.phase * 0.7);
+          const band = Math.abs(fract(z * 5.5 + s.contourPhase) - 0.5);
+          if (band > 0.06 + treble * 0.02) continue;
+          const alpha = 0.08 + (0.06 - band) * 2.4 + energy * 0.12;
+          c.fillStyle = `rgba(204,175,106,${alpha})`;
+          c.fillRect(gx * stepX, gy * stepY, 1.6, 1.6);
+        }
+      }
+    }
+    function stepParticles(audio, dtStep) {
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = audio;
+      const eps = 0.014;
+      for (let i = 0; i < s.particles.length; i++) {
+        const p = s.particles[i];
+        const g = gradient(p.x, p.y, eps);
+        const tempGrad = 0.35 + (1 - (p.y + 1) * 0.5) * (0.8 + rms * 0.7);
+        const jitter = s.temp * tempGrad * (0.35 + flux * 1.2 + transient * 1.8);
+        const nx = (Math.random() - 0.5) * jitter + Math.sin(s.phase + p.y * 7) * bass * 0.06;
+        const ny = (Math.random() - 0.5) * jitter + Math.cos(s.phase * 0.8 + p.x * 6) * mid * 0.05;
+        p.vx = p.vx * 0.84 - g.x * (0.55 + energy * 1.25) * dtStep + nx * dtStep * 2.1;
+        p.vy = p.vy * 0.84 - g.y * (0.55 + energy * 1.25) * dtStep + ny * dtStep * 2.1;
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < -1.02 || p.x > 1.02) p.vx *= -0.7;
+        if (p.y < -1.02 || p.y > 1.02) p.vy *= -0.7;
+        p.x = clamp(p.x, -1.02, 1.02);
+        p.y = clamp(p.y, -1.02, 1.02);
+        if (beat && Math.random() < 0.08 + treble * 0.14) {
+          p.x = (Math.random() - 0.5) * 1.9;
+          p.y = -0.95 + Math.random() * 0.22;
+          p.vx *= 0.25;
+          p.vy *= 0.25;
+        }
+        const val = landscape(p.x, p.y, s.phase);
+        if (val < p.bestVal) {
+          p.bestVal = val;
+          p.bestX = p.x;
+          p.bestY = p.y;
+          p.glow = 1;
+        }
+        p.glow = Math.max(0, p.glow - dtStep * (0.8 + mid * 0.8));
+      }
+    }
+    function gradient(x, y, eps) {
+      const dx = (landscape(x + eps, y, s.phase) - landscape(x - eps, y, s.phase)) / (2 * eps);
+      const dy = (landscape(x, y + eps, s.phase) - landscape(x, y - eps, s.phase)) / (2 * eps);
+      return { x: dx, y: dy };
+    }
+    function landscape(x, y, t) {
+      let z = 0.22 * (x * x + y * y);
+      z += 0.11 * Math.sin(x * 3.4 + t * 0.8) * Math.cos(y * 3.1 - t * 0.6);
+      for (let i = 0; i < s.wells.length; i++) {
+        const w = s.wells[i];
+        const dx = x - w.x;
+        const dy = y - w.y;
+        z -= w.depth * Math.exp(-(dx * dx * w.ax + dy * dy * w.ay));
+      }
+      return z;
+    }
+    return { resize, draw };
+  }
+  function createNumberTheorySketch() {
+    const s = {
+      points: [],
+      primeList: [],
+      maxN: 0,
+      spacing: 8,
+      cx: 0,
+      cy: 0,
+      modulus: 9,
+      residue: 0,
+      sieveIdx: 0,
+      strikes: [],
+      stepAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      s.spacing = clamp(Math.floor(Math.min(w, h) / 70), 6, 12);
+      const rings = Math.floor((Math.min(w, h) * 0.45) / s.spacing);
+      s.maxN = clamp((rings * 2 + 1) * (rings * 2 + 1), 900, 5200);
+      s.cx = w * 0.5;
+      s.cy = h * 0.52;
+      s.points = buildSpiral(s.maxN);
+      const primeFlags = sieveFlags(s.maxN);
+      s.primeList = [];
+      for (let n = 2; n <= s.maxN; n++) {
+        if (!primeFlags[n]) continue;
+        s.primeList.push(n);
+        s.points[n - 1].prime = true;
+      }
+      s.modulus = 9;
+      s.residue = 0;
+      s.sieveIdx = 0;
+      s.strikes = [];
+      s.stepAcc = 0;
+    }
+    function draw(api) {
+      if (!s.points.length || api.stem !== s.lastStem) {
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      const targetMod = clamp(5 + Math.floor(mid * 10 + rms * 6), 5, 21);
+      if (Math.random() < api.dt * (2 + flux * 14)) s.modulus = targetMod;
+      s.residue = ((Math.floor(api.ts * 0.003 + bass * 17 + transient * 31) % s.modulus) + s.modulus) % s.modulus;
+      s.stepAcc += api.dt * (0.7 + flux * 8 + energy * 3);
+      while (s.stepAcc >= 1) {
+        sieveStrike(false, 1);
+        s.stepAcc -= 1;
+      }
+      if (beat) sieveStrike(true, 1 + ((bass + treble) * 3 | 0));
+      for (let i = 0; i < s.points.length; i++) {
+        const p = s.points[i];
+        p.glow = Math.max(0, p.glow - api.dt * (0.9 + mid * 1.6));
+        p.strike = Math.max(0, p.strike - api.dt * (1.1 + transient * 2.3));
+      }
+      for (let i = s.strikes.length - 1; i >= 0; i--) {
+        s.strikes[i].life -= api.dt * 1.8;
+        if (s.strikes[i].life <= 0) s.strikes.splice(i, 1);
+      }
+      const c = api.ctx;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      const maxR = Math.min(api.w, api.h) * 0.43;
+      const ringStep = maxR / Math.max(1, s.modulus);
+      for (let r = 1; r <= s.modulus; r++) {
+        const active = r - 1 === s.residue;
+        c.strokeStyle = active
+          ? `rgba(255,232,172,${0.1 + rms * 0.3 + energy * 0.2})`
+          : `rgba(165,148,110,${0.03 + energy * 0.06})`;
+        c.lineWidth = active ? 1.3 : 1;
+        c.beginPath();
+        c.arc(s.cx, s.cy, r * ringStep, 0, TAU);
+        c.stroke();
+      }
+      for (let i = 0; i < s.points.length; i++) {
+        const p = s.points[i];
+        const x = s.cx + p.sx * s.spacing;
+        const y = s.cy + p.sy * s.spacing;
+        if (x < -6 || x > api.w + 6 || y < -6 || y > api.h + 6) continue;
+        const modHit = p.n % s.modulus === s.residue;
+        const primeAlpha = p.prime ? 0.14 + treble * 0.2 : 0.015 + energy * 0.04;
+        const alpha = primeAlpha + p.glow * 0.44 + p.strike * 0.35 + (modHit ? 0.08 + bass * 0.12 : 0);
+        c.fillStyle = p.prime
+          ? `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha})`
+          : `rgba(130,118,92,${alpha * 0.6})`;
+        c.beginPath();
+        c.arc(x, y, p.prime ? 1.1 + p.glow * 1.9 + (modHit ? 0.45 : 0) : 0.65 + p.strike * 0.7, 0, TAU);
+        c.fill();
+      }
+      for (let i = 0; i < s.strikes.length; i++) {
+        const strike = s.strikes[i];
+        const rr = (strike.prime % s.modulus + 1) * ringStep;
+        c.strokeStyle = `rgba(255,242,204,${strike.life * (0.18 + strike.power * 0.32)})`;
+        c.lineWidth = 1 + strike.power * 1.1;
+        c.beginPath();
+        c.arc(s.cx, s.cy, rr, 0, TAU);
+        c.stroke();
+      }
+      c.restore();
+    }
+    function sieveStrike(onBeat, count) {
+      if (!s.primeList.length) return;
+      for (let k = 0; k < count; k++) {
+        const prime = s.primeList[s.sieveIdx % s.primeList.length];
+        s.sieveIdx++;
+        const power = onBeat ? 1 : 0.46;
+        const root = s.points[prime - 1];
+        if (root) root.glow = 1.2;
+        for (let m = prime * 2; m <= s.maxN; m += prime) {
+          const p = s.points[m - 1];
+          if (!p) continue;
+          p.strike = 1;
+          p.glow = Math.max(p.glow, power * (p.prime ? 0.9 : 0.45));
+        }
+        s.strikes.push({ prime, life: 1, power });
+      }
+      if (s.strikes.length > 36) s.strikes.splice(0, s.strikes.length - 36);
+    }
+    function buildSpiral(maxN) {
+      const pts = [];
+      let x = 0;
+      let y = 0;
+      let dx = 1;
+      let dy = 0;
+      let segLen = 1;
+      let segProg = 0;
+      let turns = 0;
+      for (let n = 1; n <= maxN; n++) {
+        pts.push({ n, sx: x, sy: y, prime: false, glow: 0, strike: 0 });
+        x += dx;
+        y += dy;
+        segProg++;
+        if (segProg === segLen) {
+          segProg = 0;
+          const t = dx;
+          dx = -dy;
+          dy = t;
+          turns++;
+          if (turns % 2 === 0) segLen++;
+        }
+      }
+      return pts;
+    }
+    function sieveFlags(maxN) {
+      const flags = new Uint8Array(maxN + 1).fill(1);
+      flags[0] = 0;
+      flags[1] = 0;
+      const root = Math.floor(Math.sqrt(maxN));
+      for (let n = 2; n <= root; n++) {
+        if (!flags[n]) continue;
+        for (let m = n * n; m <= maxN; m += n) flags[m] = 0;
+      }
+      return flags;
+    }
+    return { resize, draw };
+  }
+  function createInformationSketch() {
+    const s = {
+      cols: 0,
+      rows: 0,
+      cellW: 0,
+      cellH: 0,
+      stream: [],
+      oneProb: 0.5,
+      entropy: 0,
+      symbols: new Float32Array(8),
+      nodes: [],
+      edges: [],
+      maxDepth: 1,
+      growth: 0,
+      shiftAcc: 0,
+      rebuildAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      const streamW = w * 0.46;
+      const streamH = h * 0.72;
+      s.cols = clamp(Math.floor(streamW / 9), 24, 84);
+      s.rows = clamp(Math.floor(streamH / 10), 12, 38);
+      s.cellW = streamW / s.cols;
+      s.cellH = streamH / s.rows;
+      s.stream = [];
+      s.oneProb = 0.5;
+      s.entropy = 1;
+      for (let i = 0; i < s.symbols.length; i++) s.symbols[i] = 1 + Math.random() * 0.8;
+      for (let c = 0; c < s.cols; c++) {
+        const bits = new Uint8Array(s.rows);
+        for (let r = 0; r < s.rows; r++) bits[r] = Math.random() < 0.5 ? 1 : 0;
+        s.stream.push({ bits, pulse: 0.2 });
+      }
+      rebuildTree();
+      s.growth = 0;
+      s.shiftAcc = 0;
+      s.rebuildAcc = 0;
+      void h;
+    }
+    function draw(api) {
+      if (!s.stream.length || api.stem !== s.lastStem) {
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      const wobble = Math.sin(api.ts * 0.00028 + bass * 4.4) * (0.28 - mid * 0.14);
+      const targetProb = clamp(0.5 + wobble + (rms - 0.18) * 0.45, 0.05, 0.95);
+      s.oneProb += (targetProb - s.oneProb) * Math.min(1, api.dt * (1.4 + flux * 18));
+      s.shiftAcc += api.dt * (5 + energy * 34 + bass * 18 + flux * 26);
+      if (beat) s.shiftAcc += 2.6 + transient * 8;
+      while (s.shiftAcc >= 1) {
+        pushColumn(api.audio);
+        s.shiftAcc -= 1;
+      }
+      s.rebuildAcc += api.dt * (0.5 + flux * 4 + transient * 6 + rms * 1.2);
+      if (beat || s.rebuildAcc > 1.2 + (1 - rms) * 0.9) {
+        rebuildTree();
+        s.rebuildAcc = 0;
+        s.growth = 0;
+      }
+      s.growth = Math.min(s.maxDepth + 1.2, s.growth + api.dt * (1.2 + treble * 5.2 + transient * 4 + (beat ? 1.8 : 0)));
+      const c = api.ctx;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      const leftX = api.w * 0.06;
+      const topY = api.h * 0.14;
+      const streamW = s.cols * s.cellW;
+      const streamH = s.rows * s.cellH;
+      c.fillStyle = 'rgba(26,22,17,0.22)';
+      c.fillRect(leftX, topY, streamW, streamH);
+      for (let ci = 0; ci < s.stream.length; ci++) {
+        const col = s.stream[ci];
+        const x = leftX + ci * s.cellW;
+        const gate = 0.04 + s.entropy * 0.14 + col.pulse * 0.24;
+        for (let r = 0; r < s.rows; r++) {
+          const bit = col.bits[r];
+          if (!bit && s.entropy < 0.62) continue;
+          const y = topY + r * s.cellH;
+          const alpha = bit
+            ? gate + energy * 0.16 + transient * 0.12
+            : 0.02 + s.entropy * 0.06 + rms * 0.05;
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha})`;
+          c.fillRect(x + 0.6, y + 0.6, s.cellW - 1.1, s.cellH - 1.1);
+        }
+        col.pulse = Math.max(0, col.pulse - api.dt * (1.2 + mid * 2));
+      }
+      const meterH = streamH * clamp(s.entropy, 0, 1);
+      c.fillStyle = `rgba(255,236,186,${0.18 + s.entropy * 0.35 + treble * 0.2})`;
+      c.fillRect(leftX + streamW + 8, topY + streamH - meterH, 6, meterH);
+      const treeX = api.w * 0.58;
+      const treeW = api.w * 0.36;
+      const treeTop = api.h * 0.16;
+      const treeH = api.h * 0.7;
+      for (let i = 0; i < s.edges.length; i++) {
+        const e = s.edges[i];
+        if (e.by > s.growth) continue;
+        const t = clamp(s.growth - e.ay, 0, 1);
+        const ax = treeX + e.ax * treeW;
+        const ay = treeTop + (e.ay / Math.max(1, s.maxDepth)) * treeH;
+        const bx = treeX + e.bx * treeW;
+        const by = treeTop + (e.by / Math.max(1, s.maxDepth)) * treeH;
+        c.strokeStyle = `rgba(235,210,150,${0.08 + t * (0.26 + flux * 0.3)})`;
+        c.lineWidth = 1 + t * 0.8;
+        c.beginPath();
+        c.moveTo(ax, ay);
+        c.lineTo(bx, by);
+        c.stroke();
+      }
+      for (let i = 0; i < s.nodes.length; i++) {
+        const n = s.nodes[i];
+        if (n.depth > s.growth) continue;
+        const x = treeX + n.x * treeW;
+        const y = treeTop + (n.depth / Math.max(1, s.maxDepth)) * treeH;
+        const reveal = clamp(s.growth - n.depth + 0.2, 0, 1);
+        const radius = n.leaf ? 2.2 + n.weight * 0.9 : 3 + n.weight * 0.7;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.12 + reveal * 0.35 + n.weight * 0.06})`;
+        c.beginPath();
+        c.arc(x, y, radius, 0, TAU);
+        c.fill();
+      }
+      c.restore();
+    }
+    function pushColumn(audio) {
+      const { bass, mid, energy, flux, transient, beat } = audio;
+      const bits = new Uint8Array(s.rows);
+      let ones = 0;
+      for (let r = 0; r < s.rows; r++) {
+        const lane = r / Math.max(1, s.rows - 1);
+        const laneBias = (0.5 - lane) * mid * 0.24;
+        const wobble = Math.sin(r * 0.7 + bass * 3.2) * flux * 0.08;
+        const p = clamp(s.oneProb + laneBias + wobble, 0.02, 0.98);
+        bits[r] = Math.random() < p ? 1 : 0;
+        if (bits[r]) ones++;
+      }
+      if (beat || transient > 0.1) {
+        const burst = 1 + ((transient * 10) | 0);
+        for (let i = 0; i < burst; i++) {
+          const idx = (Math.random() * s.rows) | 0;
+          bits[idx] ^= 1;
+        }
+      }
+      for (let i = 0; i < s.symbols.length; i++) s.symbols[i] *= 0.993;
+      for (let r = 0; r < s.rows; r += 3) {
+        const a = bits[r] || 0;
+        const b = bits[(r + 1) % s.rows] || 0;
+        const c = bits[(r + 2) % s.rows] || 0;
+        const sym = (a << 2) | (b << 1) | c;
+        s.symbols[sym] += 0.6 + energy * 1.1;
+      }
+      const p = clamp(ones / Math.max(1, s.rows), 0.0001, 0.9999);
+      const h = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+      s.entropy += (h - s.entropy) * 0.38;
+      s.stream.shift();
+      s.stream.push({ bits, pulse: 0.25 + transient * 1.4 + (beat ? 0.65 : 0) });
+    }
+    function rebuildTree() {
+      const queue = [];
+      for (let i = 0; i < s.symbols.length; i++) {
+        queue.push({ weight: Math.max(0.01, s.symbols[i]), sym: i, left: null, right: null });
+      }
+      while (queue.length > 1) {
+        queue.sort((a, b) => a.weight - b.weight);
+        const a = queue.shift();
+        const b = queue.shift();
+        queue.push({
+          weight: a.weight + b.weight,
+          sym: -1,
+          left: a,
+          right: b
+        });
+      }
+      s.nodes = [];
+      s.edges = [];
+      s.maxDepth = 1;
+      layout(queue[0], 0, 0, 1);
+    }
+    function layout(node, depth, lo, hi) {
+      if (!node) return null;
+      const split = lo + (hi - lo) * 0.5;
+      const left = node.left ? layout(node.left, depth + 1, lo, split) : null;
+      const right = node.right ? layout(node.right, depth + 1, split, hi) : null;
+      let x = (lo + hi) * 0.5;
+      if (left && right) x = (left.x + right.x) * 0.5;
+      else if (left) x = left.x;
+      else if (right) x = right.x;
+      const item = {
+        x,
+        depth,
+        weight: clamp(node.weight / 8, 0.05, 1),
+        leaf: !left && !right
+      };
+      s.nodes.push(item);
+      s.maxDepth = Math.max(s.maxDepth, depth);
+      if (left) s.edges.push({ ax: x, ay: depth, bx: left.x, by: left.depth });
+      if (right) s.edges.push({ ax: x, ay: depth, bx: right.x, by: right.depth });
+      return item;
+    }
+    return { resize, draw };
+  }
+  function createCryptoSketch() {
+    const s = {
+      cols: 0,
+      rows: 0,
+      cell: 0,
+      plain: [],
+      cipher: [],
+      diff: [],
+      key: null,
+      round: 0,
+      avalanche: 0,
+      shiftAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      const panelW = Math.min(w * 0.36, 460);
+      const panelH = h * 0.66;
+      s.cols = clamp(Math.floor(panelW / 10), 18, 56);
+      s.rows = clamp(Math.floor(panelH / 9), 16, 40);
+      s.cell = Math.min(panelW / s.cols, panelH / s.rows);
+      s.key = new Uint8Array(s.cols);
+      for (let i = 0; i < s.cols; i++) s.key[i] = Math.random() < 0.5 ? 1 : 0;
+      s.plain = [];
+      s.cipher = [];
+      s.diff = [];
+      s.round = 0;
+      s.avalanche = 0;
+      s.shiftAcc = 0;
+      for (let r = 0; r < s.rows; r++) pushRow({ bass: 0.3, mid: 0.3, treble: 0.2, energy: 0.3, rms: 0.2, flux: 0.04, transient: 0, beat: false });
+      void h;
+    }
+    function draw(api) {
+      if (!s.key || api.stem !== s.lastStem) {
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      s.shiftAcc += api.dt * (6 + energy * 26 + bass * 16 + flux * 34);
+      if (beat) s.shiftAcc += 4 + transient * 8;
+      while (s.shiftAcc >= 1) {
+        pushRow(api.audio);
+        s.shiftAcc -= 1;
+      }
+      s.avalanche = Math.max(0, s.avalanche - api.dt * (0.8 + mid * 1.8));
+      if (beat || transient > 0.12) {
+        s.avalanche = clamp(s.avalanche + 0.22 + transient * 1.9 + flux * 0.4, 0, 1.8);
+        mutateKey(1 + ((bass * 4 + flux * 6 + transient * 4) | 0));
+      }
+      const c = api.ctx;
+      const leftX = api.w * 0.06;
+      const topY = api.h * 0.17;
+      const panelW = s.cols * s.cell;
+      const panelH = s.rows * s.cell;
+      const rightX = api.w - leftX - panelW;
+      const midX0 = leftX + panelW + 14;
+      const midX1 = rightX - 14;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = 'rgba(22,18,14,0.24)';
+      c.fillRect(leftX, topY, panelW, panelH);
+      c.fillRect(rightX, topY, panelW, panelH);
+      for (let r = 0; r < s.rows; r++) {
+        const pRow = s.plain[r];
+        const cRow = s.cipher[r];
+        const dRow = s.diff[r];
+        if (!pRow || !cRow || !dRow) continue;
+        const y = topY + r * s.cell;
+        const linkAlpha = (0.03 + dRow.ratio * 0.18 + s.avalanche * 0.08) * (1 - r / Math.max(1, s.rows));
+        c.strokeStyle = `rgba(245,220,165,${linkAlpha})`;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(midX0, y + s.cell * 0.5);
+        c.lineTo(midX1, y + s.cell * 0.5);
+        c.stroke();
+        for (let i = 0; i < s.cols; i++) {
+          const xL = leftX + i * s.cell;
+          const xR = rightX + i * s.cell;
+          const plainBit = pRow.bits[i];
+          const cipherBit = cRow.bits[i];
+          const diffBit = dRow.bits[i];
+          const aL = plainBit
+            ? 0.09 + energy * 0.17 + pRow.pulse * 0.28
+            : 0.02 + rms * 0.05;
+          const aR = cipherBit
+            ? 0.1 + treble * 0.21 + cRow.pulse * 0.24 + diffBit * 0.2
+            : 0.02 + flux * 0.05;
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${aL})`;
+          c.fillRect(xL + 0.6, y + 0.6, s.cell - 1.2, s.cell - 1.2);
+          c.fillStyle = `rgba(250,233,190,${aR})`;
+          c.fillRect(xR + 0.6, y + 0.6, s.cell - 1.2, s.cell - 1.2);
+        }
+        pRow.pulse = Math.max(0, pRow.pulse - api.dt * (1.2 + mid * 1.5));
+        cRow.pulse = Math.max(0, cRow.pulse - api.dt * (1.1 + treble * 1.8));
+      }
+      const meterW = (midX1 - midX0) * clamp(s.avalanche / 1.8, 0, 1);
+      c.fillStyle = `rgba(255,245,210,${0.12 + s.avalanche * 0.2 + beat * 0.2})`;
+      c.fillRect(midX0, topY - 10, meterW, 4);
+      c.restore();
+    }
+    function pushRow(audio) {
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = audio;
+      const plainBits = new Uint8Array(s.cols);
+      const diffBits = new Uint8Array(s.cols);
+      const bias = Math.sin(s.round * 0.13 + bass * 3) * 0.09;
+      const p = clamp(0.24 + mid * 0.32 + rms * 0.28 + bias, 0.05, 0.95);
+      for (let i = 0; i < s.cols; i++) plainBits[i] = Math.random() < p ? 1 : 0;
+      if (transient > 0.08 || beat) {
+        const start = (Math.random() * s.cols) | 0;
+        const span = clamp(2 + ((transient + treble) * 8 | 0), 2, Math.floor(s.cols / 2));
+        for (let i = 0; i < span; i++) {
+          const idx = (start + i) % s.cols;
+          plainBits[idx] ^= 1;
+        }
+      }
+      if (beat) {
+        const idx = (Math.random() * s.cols) | 0;
+        plainBits[idx] ^= 1;
+      }
+      const cipherBits = encryptRow(plainBits, audio);
+      let diffCount = 0;
+      for (let i = 0; i < s.cols; i++) {
+        diffBits[i] = plainBits[i] ^ cipherBits[i];
+        diffCount += diffBits[i];
+      }
+      s.plain.unshift({ bits: plainBits, pulse: 0.2 + transient * 1.2 + (beat ? 0.5 : 0) });
+      s.cipher.unshift({ bits: cipherBits, pulse: 0.22 + flux * 1.1 + (beat ? 0.45 : 0) });
+      s.diff.unshift({ bits: diffBits, ratio: diffCount / s.cols });
+      if (s.plain.length > s.rows) s.plain.length = s.rows;
+      if (s.cipher.length > s.rows) s.cipher.length = s.rows;
+      if (s.diff.length > s.rows) s.diff.length = s.rows;
+      s.round++;
+      if (beat && Math.random() < 0.45 + energy * 0.35) mutateKey(1 + ((bass * 5 + flux * 8) | 0));
+    }
+    function encryptRow(plainBits, audio) {
+      const { bass, treble, rms, flux, beat } = audio;
+      const out = new Uint8Array(s.cols);
+      const shift = (s.round + Math.floor(rms * 7)) % s.cols;
+      for (let i = 0; i < s.cols; i++) {
+        const k = s.key[(i + shift) % s.cols];
+        const left = plainBits[(i + s.cols - 1 - (s.round % 3)) % s.cols];
+        const right = plainBits[(i + 1 + (s.round % 5)) % s.cols];
+        let bit = plainBits[i] ^ k;
+        bit ^= (left ^ right) & ((i + s.round) & 1);
+        if (Math.random() < s.avalanche * (0.04 + flux * 0.18)) bit ^= 1;
+        if (beat && (i + s.round) % (4 + ((bass + treble) * 5 | 0)) === 0) bit ^= 1;
+        out[i] = bit;
+      }
+      return out;
+    }
+    function mutateKey(flips) {
+      for (let i = 0; i < flips; i++) {
+        const idx = (Math.random() * s.cols) | 0;
+        s.key[idx] ^= 1;
+        if (Math.random() < 0.35) s.key[(idx + 1) % s.cols] ^= 1;
+      }
+    }
+    return { resize, draw };
+  }
+  function createAutomataSketch() {
+    const s = {
+      mode: 'pda',
+      states: [],
+      transitions: [],
+      current: 0,
+      stack: ['$'],
+      tape: [],
+      pulses: [],
+      stepAcc: 0,
+      lastStem: ''
+    };
+    function resize(w, h) {
+      const cx = w * 0.42;
+      const cy = h * 0.5;
+      const rx = w * 0.22;
+      const ry = h * 0.25;
+      s.states = [];
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU - Math.PI / 2;
+        s.states.push({
+          x: cx + Math.cos(a) * rx,
+          y: cy + Math.sin(a) * ry,
+          glow: 0
+        });
+      }
+      s.transitions = [
+        { from: 0, to: 1, sym: '0', pop: null, push: 'A', curve: -0.22, pulse: 0 },
+        { from: 0, to: 2, sym: '1', pop: null, push: 'B', curve: 0.24, pulse: 0 },
+        { from: 1, to: 1, sym: '0', pop: null, push: 'A', curve: 0.42, pulse: 0 },
+        { from: 1, to: 3, sym: '1', pop: 'A', push: null, curve: 0.15, pulse: 0 },
+        { from: 2, to: 2, sym: '1', pop: null, push: 'B', curve: -0.38, pulse: 0 },
+        { from: 2, to: 3, sym: '0', pop: 'B', push: null, curve: -0.12, pulse: 0 },
+        { from: 3, to: 4, sym: '1', pop: null, push: null, curve: 0.2, pulse: 0 },
+        { from: 3, to: 0, sym: '0', pop: null, push: null, curve: -0.24, pulse: 0 },
+        { from: 4, to: 4, sym: '1', pop: null, push: null, curve: 0.5, pulse: 0 },
+        { from: 4, to: 0, sym: 'e', pop: null, push: null, curve: 0.08, pulse: 0 }
+      ];
+      s.current = 0;
+      s.stack = ['$'];
+      s.tape = [];
+      s.pulses = [];
+      s.stepAcc = 0;
+      void h;
+    }
+    function draw(api) {
+      if (!s.states.length || api.stem !== s.lastStem) {
+        s.mode = modeFromStem(api.stem);
+        s.lastStem = api.stem;
+        resize(api.w, api.h);
+      }
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = api.audio;
+      s.stepAcc += api.dt * (1.6 + energy * 6 + bass * 4 + flux * 8);
+      if (beat) s.stepAcc += 2.4 + transient * 7;
+      while (s.stepAcc >= 1) {
+        stepMachine(api.audio);
+        s.stepAcc -= 1;
+      }
+      for (let i = 0; i < s.transitions.length; i++) {
+        s.transitions[i].pulse = Math.max(0, s.transitions[i].pulse - api.dt * (1.8 + treble * 2.4));
+      }
+      for (let i = s.pulses.length - 1; i >= 0; i--) {
+        s.pulses[i].life -= api.dt * (1.4 + flux * 2.1);
+        if (s.pulses[i].life <= 0) s.pulses.splice(i, 1);
+      }
+      for (let i = 0; i < s.states.length; i++) {
+        s.states[i].glow = Math.max(0, s.states[i].glow - api.dt * (1.1 + rms * 1.4));
+      }
+      const c = api.ctx;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < s.transitions.length; i++) {
+        const t = s.transitions[i];
+        const a = s.states[t.from];
+        const b = s.states[t.to];
+        const pulse = t.pulse;
+        if (!a || !b) continue;
+        if (t.from === t.to) {
+          const r = 24 + i * 0.6;
+          c.strokeStyle = `rgba(188,168,126,${0.08 + pulse * 0.26 + energy * 0.08})`;
+          c.lineWidth = 1 + pulse * 1.1;
+          c.beginPath();
+          c.arc(a.x, a.y - 18, r * 0.45, Math.PI * 0.1, Math.PI * 1.2);
+          c.stroke();
+          continue;
+        }
+        const mx = (a.x + b.x) * 0.5;
+        const my = (a.y + b.y) * 0.5;
+        const nx = b.y - a.y;
+        const ny = -(b.x - a.x);
+        const inv = 1 / (Math.sqrt(nx * nx + ny * ny) + 0.001);
+        const cx = mx + nx * inv * t.curve * 90;
+        const cy = my + ny * inv * t.curve * 90;
+        c.strokeStyle = `rgba(188,168,126,${0.08 + energy * 0.1 + pulse * 0.32})`;
+        c.lineWidth = 1 + pulse * 1.2;
+        c.beginPath();
+        c.moveTo(a.x, a.y);
+        c.quadraticCurveTo(cx, cy, b.x, b.y);
+        c.stroke();
+      }
+      for (let i = 0; i < s.pulses.length; i++) {
+        const p = s.pulses[i];
+        const a = s.states[p.from];
+        const b = s.states[p.to];
+        if (!a || !b) continue;
+        c.strokeStyle = `rgba(255,234,182,${p.life * (0.18 + p.power * 0.28)})`;
+        c.lineWidth = 1.4 + p.power * 1.3;
+        c.beginPath();
+        c.moveTo(a.x, a.y);
+        c.lineTo(b.x, b.y);
+        c.stroke();
+      }
+      for (let i = 0; i < s.states.length; i++) {
+        const st = s.states[i];
+        const active = i === s.current;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.11 + st.glow * 0.36 + (active ? 0.34 : 0)})`;
+        c.beginPath();
+        c.arc(st.x, st.y, 12 + st.glow * 5 + (active ? 4 : 0), 0, TAU);
+        c.fill();
+      }
+      const stackX = api.w * 0.82;
+      const baseY = api.h * 0.78;
+      for (let i = 0; i < s.stack.length; i++) {
+        const y = baseY - i * 16;
+        const bright = 1 - i / Math.max(1, s.stack.length);
+        c.fillStyle = `rgba(230,206,152,${0.08 + bright * 0.16 + mid * 0.12})`;
+        c.fillRect(stackX, y, 36, 12);
+      }
+      const tapeY = api.h * 0.88;
+      for (let i = 0; i < s.tape.length; i++) {
+        const x = api.w * 0.16 + i * 14;
+        const fade = 1 - i / Math.max(1, s.tape.length);
+        c.fillStyle = `rgba(250,232,194,${0.05 + fade * 0.24 + treble * 0.1})`;
+        c.fillRect(x, tapeY, 10, 8);
+      }
+      c.restore();
+    }
+    function stepMachine(audio) {
+      const { mid, treble, rms, flux, transient, beat, energy } = audio;
+      const probOne = clamp(0.5 + (mid - rms) * 0.8 + Math.sin(treble * TAU) * 0.05, 0.08, 0.92);
+      const symbol = Math.random() < probOne ? '1' : '0';
+      s.tape.unshift(symbol);
+      if (s.tape.length > 22) s.tape.length = 22;
+      const candidates = [];
+      for (let i = 0; i < s.transitions.length; i++) {
+        const t = s.transitions[i];
+        if (t.from !== s.current) continue;
+        if (t.sym === symbol || t.sym === '*') candidates.push({ t, score: 1 });
+        if (s.mode !== 'dfa' && t.sym === 'e' && (beat || flux > 0.08 || Math.random() < rms * 0.14)) {
+          candidates.push({ t, score: 0.8 + flux * 3 });
+        }
+      }
+      let chosen = null;
+      let bestScore = -1;
+      if (s.mode === 'dfa') {
+        chosen = candidates.length ? candidates[0].t : null;
+      } else {
+        for (let i = 0; i < candidates.length; i++) {
+          const cand = candidates[i];
+          let score = cand.score + Math.random() * (0.4 + flux * 1.8);
+          if (s.mode === 'pda' && cand.t.pop && s.stack[s.stack.length - 1] !== cand.t.pop) score -= 3;
+          if (cand.t.push && transient > 0.06) score += transient * 2;
+          if (score > bestScore) {
+            bestScore = score;
+            chosen = cand.t;
+          }
+        }
+      }
+      if (!chosen) {
+        if (beat && Math.random() < 0.45 + energy * 0.2) s.current = 0;
+        return;
+      }
+      if (s.mode === 'pda') {
+        const top = s.stack[s.stack.length - 1];
+        if (chosen.pop && top !== chosen.pop) {
+          if (!beat) return;
+          s.current = (s.current + 1) % s.states.length;
+          return;
+        }
+        if (chosen.pop && s.stack.length > 1) s.stack.pop();
+        if (chosen.push && s.stack.length < 12) s.stack.push(chosen.push);
+        if (beat && transient > 0.1 && s.stack.length < 12) s.stack.push(Math.random() < 0.5 ? 'A' : 'B');
+      }
+      s.current = chosen.to;
+      chosen.pulse = 1;
+      s.states[s.current].glow = 1;
+      s.pulses.push({ from: chosen.from, to: chosen.to, life: 1, power: 0.5 + transient * 2 + flux * 1.2 });
+      if (s.pulses.length > 24) s.pulses.splice(0, s.pulses.length - 24);
+      if (!s.stack.length) s.stack.push('$');
+    }
+    function modeFromStem(stem) {
+      if (/dfa/i.test(stem || '')) return 'dfa';
+      if (/nfa/i.test(stem || '')) return 'nfa';
+      return 'pda';
     }
     return { resize, draw };
   }
