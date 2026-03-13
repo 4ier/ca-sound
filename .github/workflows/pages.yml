@@ -45,6 +45,24 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: python3 generate_page.py
 
+      - name: Upload new assets to release
+        if: steps.tag.outputs.tag != 'latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          # Get existing asset names
+          gh release view "$TAG" --json assets -q '.assets[].name' | sort > /tmp/existing.txt
+          # Upload any output files not already in the release
+          for f in output/*.wav output/*.mp4; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f")
+            if ! grep -qxF "$name" /tmp/existing.txt; then
+              echo "Uploading new asset: $name"
+              gh release upload "$TAG" "$f" --clobber
+            fi
+          done
+
       - name: Push if changed
         run: |
           git config user.name "github-actions[bot]"
