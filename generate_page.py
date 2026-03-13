@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the album page (docs/index.html) from output/ directory and track metadata."""
-import os, json, html
+import os, json, html, wave
 
 REPO = "4ier/ca-sound"
 TAG = os.environ.get("TAG", "latest")
@@ -121,6 +121,17 @@ def generate():
     available = scan_output()
     url = base_url()
 
+    # Get durations for all WAVs
+    durations = {}
+    for stem in available:
+        wav_path = os.path.join("output", stem + ".wav")
+        if os.path.isfile(wav_path):
+            try:
+                with wave.open(wav_path, 'r') as w:
+                    durations[stem] = w.getnframes() / w.getframerate()
+            except Exception:
+                pass
+
     # Group by series
     grouped = {}
     track_num = 0
@@ -157,11 +168,12 @@ def generate():
             if stem in VIDEOS:
                 video_html = f'\n      <a class="extra-link" href="{url}/{VIDEOS[stem]}">▶ video</a>'
             note_html = f'\n      <div class="track-note">{html.escape(note)}</div>' if note else ""
+            dur_attr = f' data-duration="{durations[stem]:.1f}"' if stem in durations else ""
             tracks_html.append(f'''  <div class="track">
     <div class="track-num">{global_num}</div>
     <div class="track-body">
       <div class="track-name">{html.escape(title)}</div>{note_html}
-      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}" src="{url}/{stem}.wav"></audio>{video_html}
+      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}"{dur_attr} src="{url}/{stem}.wav"></audio>{video_html}
     </div>
   </div>
 ''')
@@ -377,7 +389,8 @@ document.querySelectorAll('audio').forEach(el => {
 
   const time = document.createElement('div');
   time.className = 'time';
-  time.textContent = '0:00';
+  const knownDur = parseFloat(el.dataset.duration);
+  time.textContent = knownDur ? '0:00 / ' + fmt(knownDur) : '0:00';
 
   wrap.appendChild(btn);
   wrap.appendChild(progWrap);
