@@ -106,7 +106,12 @@ VIDEOS = {
 }
 
 def base_url():
+    """Release URL for videos and lossless downloads."""
     return f"https://github.com/{REPO}/releases/download/{TAG}"
+
+def audio_src(stem):
+    """Local mp3 path for web playback (same-origin, no CORS issues)."""
+    return f"audio/{stem}.mp3"
 
 def scan_output():
     """Find all wav files in output/"""
@@ -173,7 +178,7 @@ def generate():
     <div class="track-num">{global_num}</div>
     <div class="track-body">
       <div class="track-name">{html.escape(title)}</div>{note_html}
-      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}"{dur_attr} src="{url}/{stem}.wav"></audio>{video_html}
+      <audio controls preload="none" data-vis="{html.escape(series_key)}" data-stem="{html.escape(stem)}"{dur_attr} src="{audio_src(stem)}"></audio>{video_html}
     </div>
   </div>
 ''')

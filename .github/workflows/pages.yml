@@ -40,6 +40,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Convert wav to mp3 for web playback
+        run: |
+          mkdir -p docs/audio
+          for f in output/*.wav; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .wav)
+            ffmpeg -y -i "$f" -codec:a libmp3lame -q:a 2 "docs/audio/${name}.mp3"
+          done
+
       - name: Generate page
         env:
           TAG: ${{ steps.tag.outputs.tag }}
