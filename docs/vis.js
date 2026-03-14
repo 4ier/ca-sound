@@ -65,6 +65,7 @@
   const sketchTaste = createTasteSketch();
   const sketchSort = createSortSketch();
   const sketchQC = createQuantumSketch();
+  const sketchNN = createNeuralNetSketch();
   const sketchOpt = createOptimizationSketch();
   const sketchNT = createNumberTheorySketch();
   const sketchInfo = createInformationSketch();
@@ -84,6 +85,7 @@
     taste: sketchTaste,
     sort: sketchSort,
     qc: sketchQC,
+    nn: sketchNN,
     opt: sketchOpt,
     nt: sketchNT,
     info: sketchInfo,
@@ -2096,6 +2098,158 @@
       return 'dijkstra';
     }
     return { resize, draw };
+  }
+  // ── Neural Networks ─────────────────────────────────────────────────────────
+  function createNeuralNetSketch() {
+    // Network topology: 4 layers
+    const layers = [4, 6, 6, 3]; // input, hidden1, hidden2, output
+    const nodes = [];
+    const edges = [];
+    let nodeActivations = [];
+    let gradientFlow = [];
+    let lossHistory = [];
+    let lossIdx = 0;
+    let prevBeat = false;
+    // Build node positions
+    for (let l = 0; l < layers.length; l++) {
+      for (let i = 0; i < layers[l]; i++) {
+        nodes.push({ layer: l, idx: i, activation: 0, gradient: 0, glow: 0 });
+      }
+    }
+    // Build edges
+    let nOff = 0;
+    for (let l = 0; l < layers.length - 1; l++) {
+      const fromOff = nOff;
+      nOff += layers[l];
+      for (let i = 0; i < layers[l]; i++) {
+        for (let j = 0; j < layers[l + 1]; j++) {
+          edges.push({ from: fromOff + i, to: nOff + j, weight: Math.random() * 2 - 1, signal: 0 });
+        }
+      }
+    }
+    // Loss curve: 120 points starting high, decaying
+    for (let i = 0; i < 120; i++) {
+      const t = i / 119;
+      lossHistory.push(1.0 * Math.exp(-3 * t) + 0.15 * Math.sin(t * 20) * Math.exp(-2 * t) + 0.05);
+    }
+    function draw(api) {
+      const { ctx, w, h, audio, intensity, stem, playhead, duration } = api;
+      const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+      const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+      const cx = w / 2, cy = h / 2;
+      const netW = w * 0.55, netH = h * 0.55;
+      const netX = cx - netW / 2, netY = cy - netH / 2 - h * 0.05;
+      // Progress through piece
+      const prog = duration > 0 ? playhead / duration : 0;
+      // Determine sub-mode from stem
+      const isBP = /backprop/i.test(stem || '');
+      const isAct = /activation/i.test(stem || '');
+      const isWS = /weight/i.test(stem || '');
+      // Update node activations based on audio
+      const nl = layers.length;
+      let nIdx = 0;
+      for (let l = 0; l < nl; l++) {
+        for (let i = 0; i < layers[l]; i++) {
+          const nd = nodes[nIdx++];
+          const layerSignal = l === 0 ? bass : l === 1 ? mid : l === 2 ? treble : energy;
+          const phase = (i + l * 3) * 0.7;
+          nd.activation += (layerSignal * (0.5 + 0.5 * Math.sin(api.ts * 0.002 + phase)) - nd.activation) * 0.12;
+          // Gradient flow (backprop mode): backward wave
+          if (isBP && prog > 0.4) {
+            const bpProg = Math.min(1, (prog - 0.4) / 0.4);
+            const targetLayer = nl - 1 - Math.floor(bpProg * nl);
+            nd.gradient += ((l === targetLayer ? flux * 2 : 0) - nd.gradient) * 0.08;
+          } else {
+            nd.gradient *= 0.95;
+          }
+          // Beat glow
+          if (beat && !prevBeat) nd.glow = 0.8 * nd.activation;
+          nd.glow *= 0.92;
+        }
+      }
+      prevBeat = beat;
+      // Update edges
+      for (const e of edges) {
+        const fromAct = nodes[e.from].activation;
+        e.signal += (fromAct * Math.abs(e.weight) - e.signal) * 0.1;
+        e.weight += (Math.random() - 0.5) * 0.005 * energy;
+      }
+      // Loss curve index
+      if (duration > 0) lossIdx = Math.floor(prog * (lossHistory.length - 1));
+      // ── Draw ──
+      ctx.globalCompositeOperation = 'lighter';
+      // Draw edges
+      nIdx = 0;
+      for (const e of edges) {
+        const fn = nodes[e.from], tn = nodes[e.to];
+        const fx = netX + (fn.layer / (nl - 1)) * netW;
+        const fy = netY + ((fn.idx + 0.5) / layers[fn.layer]) * netH;
+        const tx = netX + (tn.layer / (nl - 1)) * netW;
+        const ty = netY + ((tn.idx + 0.5) / layers[tn.layer]) * netH;
+        const alpha = Math.min(0.5, 0.05 + e.signal * 0.6);
+        const grad = fn.gradient + tn.gradient;
+        const r = Math.min(255, GOLD[0] + grad * 200);
+        const g = Math.min(255, GOLD[1] - grad * 80);
+        const b = GOLD[2];
+        ctx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${alpha.toFixed(3)})`;
+        ctx.lineWidth = 0.5 + e.signal * 2;
+        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
+      }
+      // Draw nodes
+      nIdx = 0;
+      for (let l = 0; l < nl; l++) {
+        for (let i = 0; i < layers[l]; i++) {
+          const nd = nodes[nIdx++];
+          const x = netX + (l / (nl - 1)) * netW;
+          const y = netY + ((i + 0.5) / layers[l]) * netH;
+          const r = 4 + nd.activation * 10 + nd.glow * 8;
+          // Activation glow
+          if (nd.activation > 0.1 || nd.glow > 0.05) {
+            const gr = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+            const a = Math.min(0.4, nd.activation * 0.3 + nd.glow * 0.5);
+            gr.addColorStop(0, `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${a.toFixed(3)})`);
+            gr.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath(); ctx.arc(x, y, r * 3, 0, TAU); ctx.fill();
+          }
+          // Node circle
+          const bright = 0.3 + nd.activation * 0.7;
+          ctx.fillStyle = `rgba(${(GOLD[0]*bright)|0},${(GOLD[1]*bright)|0},${(GOLD[2]*bright)|0},0.9)`;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+          // Gradient halo (backprop)
+          if (nd.gradient > 0.05) {
+            ctx.strokeStyle = `rgba(255,120,60,${Math.min(0.6, nd.gradient * 0.8).toFixed(3)})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(x, y, r + 4 + nd.gradient * 6, 0, TAU); ctx.stroke();
+          }
+        }
+      }
+      // Loss curve (bottom 20%)
+      const lossY = h * 0.82, lossH = h * 0.12, lossX = w * 0.15, lossW = w * 0.7;
+      ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.25)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i < lossHistory.length; i++) {
+        const px = lossX + (i / (lossHistory.length - 1)) * lossW;
+        const py = lossY + (1 - lossHistory[i]) * lossH;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // Current position on loss curve
+      if (lossIdx < lossHistory.length) {
+        const px = lossX + (lossIdx / (lossHistory.length - 1)) * lossW;
+        const py = lossY + (1 - lossHistory[lossIdx]) * lossH;
+        ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.9)`;
+        ctx.beginPath(); ctx.arc(px, py, 4, 0, TAU); ctx.fill();
+      }
+      // Label
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.font = '10px monospace';
+      ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.2)`;
+      const label = isBP ? 'backpropagation' : isAct ? 'activation functions' : isWS ? 'weight space' : 'neural network';
+      ctx.fillText(label, 12, h - 12);
+    }
+    return { draw };
   }
   // ── Quantum Computing ──────────────────────────────────────────────────────
   function createQuantumSketch() {

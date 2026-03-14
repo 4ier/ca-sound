@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "nn":      (180, "Neural Networks",        "反向传播的梯度回声、激活函数的音色变形、权重空间的收敛之旅。学习即是趋向和谐。"),
     "qc":      (170, "Quantum Computing",     "叠加态的和声、纠缠的立体声关联、量子行走的干涉条纹。量子世界不是比喻——它本身就是波。"),
     "opt":     (160, "Optimization",          "梯度下降的耐心寻路、模拟退火从混沌到结晶、遗传算法的群体进化。最优解的声音肖像。"),
     "crypto":  (150, "Cryptography",         "一次性密码本的溶解、雪崩效应的突变、Diffie-Hellman 的秘密收敛。数学守护隐私。"),
@@ -28,6 +29,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Neural Networks
+    "nn_1_backpropagation":            ("nn", "Backpropagation",          "前向传播逐层叠加泛音，反向传播以 FM 回声传递梯度。损失函数从三全音收敛为完美五度。"),
+    "nn_2_activation_functions":       ("nn", "Activation Functions",     "同一输入信号经过 sigmoid/ReLU/tanh/softmax 四种变形——压缩、截断、饱和、概率竞争。"),
+    "nn_3_weight_space":              ("nn", "Weight Space",              "200 步训练轨迹穿越损失地形——随机初始化的噪声云、鞍点的振荡、局部最小的错误和弦、最终收敛为 D minor。"),
     # Quantum Computing
     "qc_1_superposition":          ("qc", "Superposition",          "|0⟩=220Hz, |1⟩=330Hz——完美五度。Hadamard 门让两个频率共存，测量让一个永远消失。"),
     "qc_2_entanglement":           ("qc", "Entanglement",           "Bell 态：左右声道完美关联。测量一个，另一个瞬间坍缩——距离无关。"),
