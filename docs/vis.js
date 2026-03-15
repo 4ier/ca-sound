@@ -73,6 +73,7 @@
   const sketchCrypto = createCryptoSketch();
   const sketchConc = createConcurrencySketch();
   const sketchAuto = createAutomataSketch();
+  const sketchType = createTypeSystemsSketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
@@ -93,6 +94,7 @@
     crypto: sketchCrypto,
     conc: sketchConc,
     auto: sketchAuto,
+    type: sketchType,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -3386,6 +3388,253 @@
       return 'pda';
     }
     return { resize, draw };
+  }
+  // ── Type Systems ──────────────────────────────────────────────────────
+  function createTypeSystemsSketch() {
+    // 5 type variables arranged in a semicircle, each with inference state
+    const typeVars = [
+      { name: 'α', target: 'Int',    angle: -0.6, snapped: false, snapProg: 0, wobble: 0.7 + Math.random() * 0.5 },
+      { name: 'β', target: 'α→γ',   angle: -0.3, snapped: false, snapProg: 0, wobble: 0.9 + Math.random() * 0.5 },
+      { name: 'γ', target: 'Bool',   angle: 0.0,  snapped: false, snapProg: 0, wobble: 0.6 + Math.random() * 0.5 },
+      { name: 'δ', target: 'List α', angle: 0.3,  snapped: false, snapProg: 0, wobble: 0.8 + Math.random() * 0.5 },
+      { name: 'ε', target: '≡β',    angle: 0.6,  snapped: false, snapProg: 0, wobble: 1.0 + Math.random() * 0.5 },
+    ];
+    // Constraint edges (unification)
+    const constraints = [];
+    let prevBeat = false;
+    let flashTimer = 0;
+    let flashIdx = -1;
+    // Lattice nodes for subtype mode
+    const latticeNodes = [
+      { name: 'Top',  x: 0.5, y: 0.12, children: [1, 2, 3] },
+      { name: 'Num',  x: 0.25, y: 0.35, children: [4, 5] },
+      { name: 'Seq',  x: 0.5, y: 0.35, children: [6, 7] },
+      { name: 'Fn',   x: 0.75, y: 0.35, children: [8, 9] },
+      { name: 'Int',  x: 0.15, y: 0.58, children: [] },
+      { name: 'Float',x: 0.35, y: 0.58, children: [] },
+      { name: 'List', x: 0.42, y: 0.58, children: [] },
+      { name: 'Stream',x: 0.58,y: 0.58, children: [] },
+      { name: 'Pure', x: 0.68, y: 0.58, children: [] },
+      { name: 'Effect',x: 0.82,y: 0.58, children: [] },
+    ];
+    function draw(api) {
+      const { ctx, w, h, audio, intensity, stem, playhead, duration, ts } = api;
+      const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+      const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+      const prog = duration > 0 ? playhead / duration : 0;
+      const isHM = /hindley|milner/i.test(stem || '');
+      const isSub = /subtype|lattice/i.test(stem || '');
+      const isCH = /curry|howard/i.test(stem || '');
+      ctx.globalCompositeOperation = 'lighter';
+      // Beat flash
+      if (beat && !prevBeat) {
+        flashTimer = 1.0;
+        flashIdx = Math.floor(Math.random() * typeVars.length);
+      }
+      prevBeat = beat;
+      flashTimer *= 0.93;
+      if (isSub) {
+        // ── Subtype Lattice mode ──
+        const cx = w / 2, cy = h / 2;
+        // Draw edges
+        for (const node of latticeNodes) {
+          const nx = node.x * w, ny = node.y * h * 1.2 + h * 0.05;
+          for (const ci of node.children) {
+            const child = latticeNodes[ci];
+            const cx2 = child.x * w, cy2 = child.y * h * 1.2 + h * 0.05;
+            const alpha = 0.1 + energy * 0.2;
+            ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha.toFixed(3)})`;
+            ctx.lineWidth = 1 + bass * 2;
+            ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(cx2, cy2); ctx.stroke();
+          }
+        }
+        // Draw nodes
+        for (let i = 0; i < latticeNodes.length; i++) {
+          const node = latticeNodes[i];
+          const nx = node.x * w, ny = node.y * h * 1.2 + h * 0.05;
+          // Depth determines brightness: deeper = dimmer (more specific type)
+          const depth = node.y;
+          const bright = 0.4 + (1.0 - depth) * 0.6 * (0.5 + energy * 0.5);
+          // Active node based on playhead
+          const nodePhase = i / latticeNodes.length;
+          const isActive = Math.abs(prog - nodePhase) < 0.08;
+          const r = isActive ? 10 + mid * 15 : 5 + energy * 4;
+          if (isActive || energy > 0.3) {
+            const gr = ctx.createRadialGradient(nx, ny, 0, nx, ny, r * 4);
+            const a = isActive ? 0.3 + treble * 0.3 : 0.05 + energy * 0.1;
+            gr.addColorStop(0, `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${a.toFixed(3)})`);
+            gr.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath(); ctx.arc(nx, ny, r * 4, 0, TAU); ctx.fill();
+          }
+          ctx.fillStyle = `rgba(${(GOLD[0]*bright)|0},${(GOLD[1]*bright)|0},${(GOLD[2]*bright)|0},0.9)`;
+          ctx.beginPath(); ctx.arc(nx, ny, r, 0, TAU); ctx.fill();
+          // Label
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.font = '10px monospace';
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(bright * 0.5).toFixed(2)})`;
+          ctx.textAlign = 'center';
+          ctx.fillText(node.name, nx, ny + r + 14);
+          ctx.globalCompositeOperation = 'lighter';
+        }
+        // Bottom label
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.font = '9px monospace';
+        ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.15)`;
+        ctx.textAlign = 'center';
+        ctx.fillText('⊤ → ⊥', w / 2, h * 0.85);
+        ctx.textAlign = 'start';
+      } else if (isCH) {
+        // ── Curry-Howard mode: proof construction ──
+        const cx = w / 2, cy = h * 0.4;
+        // Three proof blocks: ∧ (left), → (center), ∨ (right)
+        const blocks = [
+          { sym: 'A ∧ B', x: 0.2, phase: [0, 0.33] },
+          { sym: 'A → B', x: 0.5, phase: [0.33, 0.66] },
+          { sym: 'A ∨ B → C', x: 0.8, phase: [0.66, 1.0] },
+        ];
+        for (const blk of blocks) {
+          const bx = blk.x * w, by = cy;
+          const isActiveBlock = prog >= blk.phase[0] && prog < blk.phase[1];
+          const localProg = isActiveBlock ? (prog - blk.phase[0]) / (blk.phase[1] - blk.phase[0]) : (prog >= blk.phase[1] ? 1 : 0);
+          // Proof tree: branches grow with progress
+          const depth = Math.floor(localProg * 4) + 1;
+          const branchLen = 30 + mid * 40;
+          for (let d = 0; d < depth; d++) {
+            const angle1 = -Math.PI / 2 - 0.4 + d * 0.15;
+            const angle2 = -Math.PI / 2 + 0.4 - d * 0.15;
+            const len = branchLen * (1 - d * 0.2);
+            const alpha = isActiveBlock ? 0.2 + energy * 0.4 : 0.06;
+            ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha.toFixed(3)})`;
+            ctx.lineWidth = 1 + bass;
+            const ox = bx, oy = by - d * 25;
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            ctx.lineTo(ox + Math.cos(angle1) * len, oy + Math.sin(angle1) * len);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            ctx.lineTo(ox + Math.cos(angle2) * len, oy + Math.sin(angle2) * len);
+            ctx.stroke();
+          }
+          // Glow at root if active
+          if (isActiveBlock) {
+            const gr = ctx.createRadialGradient(bx, by, 0, bx, by, 40 + energy * 30);
+            gr.addColorStop(0, `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(0.15 + treble * 0.2).toFixed(3)})`);
+            gr.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath(); ctx.arc(bx, by, 40 + energy * 30, 0, TAU); ctx.fill();
+          }
+          // Completion indicator
+          if (localProg >= 0.9) {
+            ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(0.6 + treble * 0.3).toFixed(3)})`;
+            ctx.beginPath(); ctx.arc(bx, by - depth * 25 - 10, 3, 0, TAU); ctx.fill();
+          }
+          // Label
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.font = '11px monospace';
+          const labelAlpha = isActiveBlock ? 0.5 : 0.15;
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${labelAlpha.toFixed(2)})`;
+          ctx.textAlign = 'center';
+          ctx.fillText(blk.sym, bx, by + 50);
+          ctx.globalCompositeOperation = 'lighter';
+        }
+        // Horizontal inference bar
+        const barY = h * 0.75;
+        const barProg = Math.min(1, prog * 1.1);
+        ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.2)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(w * 0.1, barY); ctx.lineTo(w * 0.9, barY); ctx.stroke();
+        ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.5)`;
+        ctx.fillRect(w * 0.1, barY - 1, (w * 0.8) * barProg, 3);
+      } else {
+        // ── Hindley-Milner mode (default): type variable inference ──
+        const cx = w / 2, cy = h * 0.4;
+        const radius = Math.min(w, h) * 0.3;
+        // Snap timing: each variable snaps at prog thresholds
+        const snapThresholds = [0.15, 0.30, 0.45, 0.60, 0.72];
+        for (let i = 0; i < typeVars.length; i++) {
+          const tv = typeVars[i];
+          const wasSnapped = tv.snapped;
+          tv.snapped = prog >= snapThresholds[i];
+          if (tv.snapped && !wasSnapped) {
+            tv.snapProg = 1.0;
+          }
+          tv.snapProg *= 0.96;
+          // Position: semicircle
+          const a = tv.angle;
+          const bx = cx + Math.cos(a - Math.PI / 2) * radius;
+          const by = cy + Math.sin(a - Math.PI / 2) * radius * 0.6;
+          // Wobble (uncertainty) or stable
+          let drawX = bx, drawY = by;
+          if (!tv.snapped) {
+            const wob = tv.wobble * 8 * (1.0 + energy * 3);
+            drawX += Math.sin(ts * 0.003 * tv.wobble + i * 2) * wob;
+            drawY += Math.cos(ts * 0.004 * tv.wobble + i * 3) * wob * 0.6;
+          }
+          // Node size
+          const r = tv.snapped ? 8 + mid * 5 : 5 + flux * 10;
+          // Glow
+          const glowR = r * (tv.snapped ? 4 + tv.snapProg * 8 : 2 + energy * 2);
+          const glowAlpha = tv.snapped ? 0.15 + tv.snapProg * 0.4 + treble * 0.1 : 0.05 + energy * 0.08;
+          const gr = ctx.createRadialGradient(drawX, drawY, 0, drawX, drawY, glowR);
+          gr.addColorStop(0, `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${glowAlpha.toFixed(3)})`);
+          gr.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gr;
+          ctx.beginPath(); ctx.arc(drawX, drawY, glowR, 0, TAU); ctx.fill();
+          // Core circle
+          const bright = tv.snapped ? 0.7 + treble * 0.3 : 0.2 + energy * 0.3;
+          ctx.fillStyle = `rgba(${(GOLD[0]*bright)|0},${(GOLD[1]*bright)|0},${(GOLD[2]*bright)|0},0.9)`;
+          ctx.beginPath(); ctx.arc(drawX, drawY, r, 0, TAU); ctx.fill();
+          // Constraint line to center when snapped
+          if (tv.snapped) {
+            const alpha = 0.08 + tv.snapProg * 0.3;
+            ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha.toFixed(3)})`;
+            ctx.lineWidth = 0.5 + tv.snapProg * 2;
+            ctx.beginPath(); ctx.moveTo(drawX, drawY); ctx.lineTo(cx, cy); ctx.stroke();
+          }
+          // Labels
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.font = '12px monospace';
+          const labelAlpha = tv.snapped ? 0.5 + tv.snapProg * 0.3 : 0.15;
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${labelAlpha.toFixed(2)})`;
+          ctx.textAlign = 'center';
+          ctx.fillText(tv.name, drawX, drawY + r + 16);
+          if (tv.snapped) {
+            ctx.font = '9px monospace';
+            ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(0.2 + tv.snapProg * 0.3).toFixed(2)})`;
+            ctx.fillText(': ' + tv.target, drawX, drawY + r + 28);
+          }
+          ctx.globalCompositeOperation = 'lighter';
+        }
+        // Central unification point
+        const allSnapped = typeVars.every(v => v.snapped);
+        if (allSnapped) {
+          const coreAlpha = 0.1 + bass * 0.3;
+          const coreR = 15 + mid * 20;
+          const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+          gr.addColorStop(0, `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${coreAlpha.toFixed(3)})`);
+          gr.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gr;
+          ctx.beginPath(); ctx.arc(cx, cy, coreR, 0, TAU); ctx.fill();
+          // Principal type label
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.font = '10px monospace';
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(0.2 + bass * 0.3).toFixed(2)})`;
+          ctx.textAlign = 'center';
+          ctx.fillText('principal type', cx, cy + coreR + 14);
+          ctx.globalCompositeOperation = 'lighter';
+        }
+      }
+      // Bottom label
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.font = '10px monospace';
+      ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.2)`;
+      ctx.textAlign = 'start';
+      const label = isHM ? 'hindley-milner' : isSub ? 'subtype lattice' : isCH ? 'curry-howard' : 'type systems';
+      ctx.fillText(label, 12, h - 12);
+    }
+    return { draw };
   }
   function createTasteSketch() {
     const s = {

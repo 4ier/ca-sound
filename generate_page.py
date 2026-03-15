@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "type":    (190, "Type Systems",           "类型推断的和声收敛、子类型格的层级共鸣、Curry-Howard 的证明即程序。类型不是约束——是结构。"),
     "nn":      (180, "Neural Networks",        "反向传播的梯度回声、激活函数的音色变形、权重空间的收敛之旅。学习即是趋向和谐。"),
     "qc":      (170, "Quantum Computing",     "叠加态的和声、纠缠的立体声关联、量子行走的干涉条纹。量子世界不是比喻——它本身就是波。"),
     "opt":     (160, "Optimization",          "梯度下降的耐心寻路、模拟退火从混沌到结晶、遗传算法的群体进化。最优解的声音肖像。"),
@@ -29,6 +30,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Type Systems
+    "type_1_hindley_milner":           ("type", "Hindley-Milner Inference",   "5 个类型变量从不确定的频率漂移中逐一被约束统一——推断即收敛，principal type 即终和弦。"),
+    "type_2_subtype_lattice":          ("type", "Subtype Lattice",           "从 Top（所有泛音）到 Bottom（沉默），子类型继承父类的谐波 DNA，添加自己的音色人格。"),
+    "type_3_curry_howard":             ("type", "Curry-Howard",              "合取=双证明和弦，蕴涵=FM 变换传递，析取=双路径收敛。证明完成时和声解决。"),
     # Neural Networks
     "nn_1_backpropagation":            ("nn", "Backpropagation",          "前向传播逐层叠加泛音，反向传播以 FM 回声传递梯度。损失函数从三全音收敛为完美五度。"),
     "nn_2_activation_functions":       ("nn", "Activation Functions",     "同一输入信号经过 sigmoid/ReLU/tanh/softmax 四种变形——压缩、截断、饱和、概率竞争。"),
