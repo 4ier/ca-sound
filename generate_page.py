@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "cat":     (200, "Category Theory",         "函子的结构保持、自然变换的路径无关、单子的不确定性链。范畴论——数学的数学。"),
     "type":    (190, "Type Systems",           "类型推断的和声收敛、子类型格的层级共鸣、Curry-Howard 的证明即程序。类型不是约束——是结构。"),
     "nn":      (180, "Neural Networks",        "反向传播的梯度回声、激活函数的音色变形、权重空间的收敛之旅。学习即是趋向和谐。"),
     "qc":      (170, "Quantum Computing",     "叠加态的和声、纠缠的立体声关联、量子行走的干涉条纹。量子世界不是比喻——它本身就是波。"),
@@ -30,6 +31,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Category Theory
+    "cat_1_functor":                   ("cat", "Functor",                   "两个范畴之间的结构保持映射——C 的旋律在 D 中重生，形态改变但关系不变。"),
+    "cat_2_natural_transformation":    ("cat", "Natural Transformation",    "函子之间的态射——F 到 G 的每个分量平滑变形，自然性方块的两条路径殊途同归。"),
+    "cat_3_monad":                     ("cat", "Monad",                     "Maybe 单子：纯净音符被不确定性包裹，Kleisli 链中 Nothing 吞噬一切，Join 将嵌套坍缩。"),
     # Type Systems
     "type_1_hindley_milner":           ("type", "Hindley-Milner Inference",   "5 个类型变量从不确定的频率漂移中逐一被约束统一——推断即收敛，principal type 即终和弦。"),
     "type_2_subtype_lattice":          ("type", "Subtype Lattice",           "从 Top（所有泛音）到 Bottom（沉默），子类型继承父类的谐波 DNA，添加自己的音色人格。"),

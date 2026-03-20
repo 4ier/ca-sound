@@ -74,6 +74,7 @@
   const sketchConc = createConcurrencySketch();
   const sketchAuto = createAutomataSketch();
   const sketchType = createTypeSystemsSketch();
+  const sketchCat = createCategorySketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
@@ -95,6 +96,7 @@
     conc: sketchConc,
     auto: sketchAuto,
     type: sketchType,
+    cat: sketchCat,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -3633,6 +3635,211 @@
       ctx.textAlign = 'start';
       const label = isHM ? 'hindley-milner' : isSub ? 'subtype lattice' : isCH ? 'curry-howard' : 'type systems';
       ctx.fillText(label, 12, h - 12);
+    }
+    return { draw };
+  }
+  function createCategorySketch() {
+    // Category objects as nodes, functors as arrows, monad as effect chain
+    const catC = [
+      { name: 'C₀', freq: 262, x: 0.15, y: 0.3 },
+      { name: 'C₁', freq: 294, x: 0.25, y: 0.2 },
+      { name: 'C₂', freq: 330, x: 0.35, y: 0.3 },
+      { name: 'C₃', freq: 392, x: 0.30, y: 0.45 },
+      { name: 'C₄', freq: 440, x: 0.20, y: 0.45 },
+    ];
+    const catD = [
+      { name: 'D₀', freq: 392, x: 0.65, y: 0.3 },
+      { name: 'D₁', freq: 440, x: 0.75, y: 0.2 },
+      { name: 'D₂', freq: 494, x: 0.85, y: 0.3 },
+      { name: 'D₃', freq: 587, x: 0.80, y: 0.45 },
+      { name: 'D₄', freq: 659, x: 0.70, y: 0.45 },
+    ];
+    // Morphisms within each category (edges)
+    const morphs = [[0,1],[1,2],[2,3],[3,4],[4,0],[0,2],[1,3]];
+    let prevBeat = false;
+    let pulseTimer = 0;
+    let activeArrow = -1;
+    // Monad chain state
+    const chain = [];
+    for (let i = 0; i < 8; i++) chain.push({ alive: true, wrap: 0, x: 0.1 + i * 0.1, flash: 0 });
+    function draw(api) {
+      const { ctx, w, h, audio, intensity, stem, playhead, duration, ts } = api;
+      const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+      const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+      const prog = duration > 0 ? playhead / duration : 0;
+      const isFunctor = /functor/i.test(stem || '');
+      const isNatTrans = /natural|transformation/i.test(stem || '');
+      const isMonad = /monad/i.test(stem || '');
+      ctx.globalCompositeOperation = 'lighter';
+      if (beat && !prevBeat) { pulseTimer = 1.0; activeArrow = Math.floor(Math.random() * morphs.length); }
+      prevBeat = beat;
+      pulseTimer *= 0.92;
+      if (isMonad) {
+        // ── Monad: chain of wrapped values ──
+        const cx = w / 2, baseY = h * 0.45;
+        const chainLen = chain.length;
+        // Update chain state based on progress
+        const killPoint = 0.45 + 0.15; // ~60% through, some die
+        for (let i = 0; i < chainLen; i++) {
+          const c = chain[i];
+          c.wrap = Math.min(1, prog * 2.5 - i * 0.15);
+          if (c.wrap < 0) c.wrap = 0;
+          // Some die in the bind chain section
+          if (prog > 0.45 && prog < 0.75 && i > 2 && (i === 4 || i === 6)) c.alive = false;
+          c.flash *= 0.95;
+          if (beat && i === Math.floor(prog * chainLen)) c.flash = 1;
+        }
+        // Draw chain connections
+        for (let i = 0; i < chainLen - 1; i++) {
+          const c1 = chain[i], c2 = chain[i + 1];
+          const x1 = c1.x * w, x2 = c2.x * w;
+          const alpha = (c1.alive && c2.alive) ? 0.1 + energy * 0.15 : 0.03;
+          ctx.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + alpha.toFixed(3) + ')';
+          ctx.lineWidth = 1 + bass;
+          ctx.setLineDash(c1.alive ? [] : [4, 4]);
+          ctx.beginPath(); ctx.moveTo(x1, baseY); ctx.lineTo(x2, baseY); ctx.stroke();
+          ctx.setLineDash([]);
+          // Arrow head
+          if (c1.alive && c2.alive) {
+            const ax = (x1 + x2) / 2 + 5, ay = baseY;
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath(); ctx.moveTo(ax, ay - 3); ctx.lineTo(ax + 6, ay); ctx.lineTo(ax, ay + 3); ctx.fill();
+          }
+        }
+        // Draw chain nodes
+        for (let i = 0; i < chainLen; i++) {
+          const c = chain[i];
+          const nx = c.x * w, ny = baseY;
+          const r = c.alive ? 6 + mid * 8 + c.flash * 10 : 3;
+          const bright = c.alive ? 0.5 + energy * 0.4 + c.flash * 0.3 : 0.1;
+          // Wrap rings (monad layers)
+          if (c.wrap > 0 && c.alive) {
+            const rings = Math.min(3, Math.floor(c.wrap * 3) + 1);
+            for (let ring = 0; ring < rings; ring++) {
+              const rr = r + 6 + ring * 8 + Math.sin(ts / 1000 * (2 + ring)) * 2;
+              const ra = (0.1 + c.wrap * 0.15) / (ring + 1);
+              ctx.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + ra.toFixed(3) + ')';
+              ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.arc(nx, ny, rr, 0, TAU); ctx.stroke();
+            }
+          }
+          // Core
+          if (c.alive) {
+            const gr = ctx.createRadialGradient(nx, ny, 0, nx, ny, r * 3);
+            gr.addColorStop(0, 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (bright * 0.4).toFixed(3) + ')');
+            gr.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gr;
+            ctx.beginPath(); ctx.arc(nx, ny, r * 3, 0, TAU); ctx.fill();
+          }
+          ctx.fillStyle = 'rgba(' + (GOLD[0] * bright | 0) + ',' + (GOLD[1] * bright | 0) + ',' + (GOLD[2] * bright | 0) + ',' + (c.alive ? 0.9 : 0.2) + ')';
+          ctx.beginPath(); ctx.arc(nx, ny, r, 0, TAU); ctx.fill();
+          // Nothing: X mark
+          if (!c.alive) {
+            ctx.strokeStyle = 'rgba(180,60,60,0.3)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(nx - 4, ny - 4); ctx.lineTo(nx + 4, ny + 4); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(nx + 4, ny - 4); ctx.lineTo(nx - 4, ny + 4); ctx.stroke();
+          }
+        }
+        // Labels
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.font = '9px monospace';
+        ctx.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.2)';
+        ctx.textAlign = 'center';
+        const labels = ['η (unit)', 'bind >>=', 'μ (join)'];
+        const lx = [0.2, 0.5, 0.8];
+        for (let i = 0; i < 3; i++) ctx.fillText(labels[i], lx[i] * w, h * 0.7);
+        ctx.textAlign = 'start';
+      } else {
+        // ── Functor / Natural Transformation: two categories with mapping arrows ──
+        const showBoth = isFunctor || isNatTrans;
+        // Draw category C (left)
+        function drawCat(cat, label, offsetX, alpha) {
+          for (const m of morphs) {
+            if (m[0] >= cat.length || m[1] >= cat.length) continue;
+            const a = cat[m[0]], b = cat[m[1]];
+            const ax = a.x * w + offsetX, ay = a.y * h;
+            const bx = b.x * w + offsetX, by = b.y * h;
+            ctx.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (alpha * (0.08 + energy * 0.12)).toFixed(3) + ')';
+            ctx.lineWidth = 1 + bass * 1.5;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+          }
+          for (let i = 0; i < cat.length; i++) {
+            const obj = cat[i];
+            const nx = obj.x * w + offsetX, ny = obj.y * h;
+            const isActive = Math.abs(prog * cat.length - i) < 0.6;
+            const r = isActive ? 7 + mid * 10 : 4 + energy * 3;
+            const bright = alpha * (isActive ? 0.7 + treble * 0.3 : 0.3 + energy * 0.2);
+            if (isActive) {
+              const gr = ctx.createRadialGradient(nx, ny, 0, nx, ny, r * 3);
+              gr.addColorStop(0, 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (bright * 0.3).toFixed(3) + ')');
+              gr.addColorStop(1, 'rgba(0,0,0,0)');
+              ctx.fillStyle = gr;
+              ctx.beginPath(); ctx.arc(nx, ny, r * 3, 0, TAU); ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(' + (GOLD[0] * bright | 0) + ',' + (GOLD[1] * bright | 0) + ',' + (GOLD[2] * bright | 0) + ',0.85)';
+            ctx.beginPath(); ctx.arc(nx, ny, r, 0, TAU); ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.font = '9px monospace';
+            ctx.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (bright * 0.4).toFixed(2) + ')';
+            ctx.textAlign = 'center';
+            ctx.fillText(obj.name, nx, ny + r + 12);
+            ctx.globalCompositeOperation = 'lighter';
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.font = '10px monospace';
+          ctx.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (alpha * 0.2).toFixed(2) + ')';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, (cat[2].x * w + offsetX), h * 0.62);
+          ctx.globalCompositeOperation = 'lighter';
+        }
+        drawCat(catC, 'Category C', 0, 1.0);
+        drawCat(catD, 'Category D', 0, 1.0);
+        // Functor arrows between C and D
+        const arrowAlpha = 0.08 + energy * 0.15 + pulseTimer * 0.2;
+        for (let i = 0; i < 5; i++) {
+          const cx = catC[i].x * w, cy = catC[i].y * h;
+          const dx = catD[i].x * w, dy = catD[i].y * h;
+          // Only show arrows based on progress
+          if (prog * 5 < i && !isNatTrans) continue;
+          const a = i === activeArrow ? arrowAlpha + 0.15 : arrowAlpha;
+          ctx.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + a.toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 5]);
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(dx, dy); ctx.stroke();
+          ctx.setLineDash([]);
+          // Arrow head
+          const angle = Math.atan2(dy - cy, dx - cx);
+          const headX = dx - Math.cos(angle) * 8;
+          const headY = dy - Math.sin(angle) * 8;
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.beginPath();
+          ctx.moveTo(dx, dy);
+          ctx.lineTo(headX - Math.sin(angle) * 3, headY + Math.cos(angle) * 3);
+          ctx.lineTo(headX + Math.sin(angle) * 3, headY - Math.cos(angle) * 3);
+          ctx.fill();
+          // Natural transformation: second set of arrows (η components) in different style
+          if (isNatTrans && prog > 0.4) {
+            const midX = (cx + dx) / 2, midY = (cy + dy) / 2 - 15;
+            const etaAlpha = (prog - 0.4) * 0.5;
+            ctx.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + (GOLD[2] + 40) + ',' + etaAlpha.toFixed(3) + ')';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 10);
+            ctx.quadraticCurveTo(midX, midY - 20 - Math.sin(ts / 800 + i) * 5, dx, dy - 10);
+            ctx.stroke();
+          }
+        }
+        // Functor label
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.font = '11px monospace';
+        ctx.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.15)';
+        ctx.textAlign = 'center';
+        const fLabel = isNatTrans ? 'η: F ⇒ G' : 'F: C → D';
+        ctx.fillText(fLabel, w / 2, h * 0.12);
+        ctx.textAlign = 'start';
+      }
+      ctx.globalCompositeOperation = 'source-over';
     }
     return { draw };
   }
