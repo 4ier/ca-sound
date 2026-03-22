@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "dist":    (210, "Distributed Systems",     "Raft 共识的心跳与分裂、Gossip 协议的指数蔓延、向量时钟的因果多声部。分布式系统——协调即和声。"),
     "cat":     (200, "Category Theory",         "函子的结构保持、自然变换的路径无关、单子的不确定性链。范畴论——数学的数学。"),
     "type":    (190, "Type Systems",           "类型推断的和声收敛、子类型格的层级共鸣、Curry-Howard 的证明即程序。类型不是约束——是结构。"),
     "nn":      (180, "Neural Networks",        "反向传播的梯度回声、激活函数的音色变形、权重空间的收敛之旅。学习即是趋向和谐。"),
@@ -31,6 +32,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Distributed Systems
+    "dist_1_raft_consensus":           ("dist", "Raft Consensus",           "5 节点集群的选举、心跳、网络分区与脑裂——两个 leader 共存的不谐和，最终愈合为统一心跳。"),
+    "dist_2_gossip_protocol":          ("dist", "Gossip Protocol",          "7 节点环形拓扑的流行病传播——一个谣言指数蔓延，S 曲线收敛为全体合唱。"),
+    "dist_3_vector_clocks":            ("dist", "Vector Clocks",            "4 个进程各自的时钟频率形成复合节奏——消息传递同步时钟，因果链成为旋律序列。"),
     # Category Theory
     "cat_1_functor":                   ("cat", "Functor",                   "两个范畴之间的结构保持映射——C 的旋律在 D 中重生，形态改变但关系不变。"),
     "cat_2_natural_transformation":    ("cat", "Natural Transformation",    "函子之间的态射——F 到 G 的每个分量平滑变形，自然性方块的两条路径殊途同归。"),
@@ -134,13 +139,17 @@ def audio_src(stem):
     return f"audio/{stem}.mp3"
 
 def scan_output():
-    """Find all wav files in output/"""
-    wavs = []
+    """Find all available tracks (wav in output/ or mp3 in docs/audio/)."""
+    stems = set()
     if os.path.isdir("output"):
         for f in sorted(os.listdir("output")):
             if f.endswith(".wav"):
-                wavs.append(f[:-4])  # strip .wav
-    return wavs
+                stems.add(f[:-4])
+    if os.path.isdir("docs/audio"):
+        for f in sorted(os.listdir("docs/audio")):
+            if f.endswith(".mp3"):
+                stems.add(f[:-4])
+    return sorted(stems)
 
 def generate():
     available = scan_output()

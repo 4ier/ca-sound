@@ -74,6 +74,7 @@
   const sketchConc = createConcurrencySketch();
   const sketchAuto = createAutomataSketch();
   const sketchType = createTypeSystemsSketch();
+  const sketchDist = createDistributedSketch();
   const sketchCat = createCategorySketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
@@ -97,6 +98,7 @@
     auto: sketchAuto,
     type: sketchType,
     cat: sketchCat,
+    dist: sketchDist,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -3638,6 +3640,334 @@
     }
     return { draw };
   }
+  function createDistributedSketch() {
+    // 5 Raft nodes in a pentagon, gossip ring, vector clock timelines
+    const NUM_NODES = 5;
+    const nodes = [];
+    for (let i = 0; i < NUM_NODES; i++) {
+      const a = -Math.PI / 2 + (i * 2 * Math.PI) / NUM_NODES;
+      nodes.push({ x: 0.5 + 0.25 * Math.cos(a), y: 0.45 + 0.25 * Math.sin(a), phase: Math.random() * TAU, alive: true });
+    }
+    let leader = -1;
+    let splitBrain = false;
+    let prevBeat = false;
+    let heartbeatPhase = 0;
+    let gossipWave = [];  // { from, to, progress, active }
+    let infectedSet = new Set();
+    let msgParticles = []; // { x, y, tx, ty, progress, life }
+    let vcBars = [0, 0, 0, 0]; // vector clock values per process
+
+    return {
+      draw(api) {
+        const { ctx: c, w, h, dt, ts, audio, intensity, playhead, duration, stem } = api;
+        const progress = duration > 0 ? playhead / duration : 0;
+        const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+        const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+
+        c.fillStyle = BG;
+        c.fillRect(0, 0, w, h);
+
+        const isRaft = stem.includes('raft');
+        const isGossip = stem.includes('gossip');
+        const isVector = stem.includes('vector');
+
+        const cx = w / 2, cy = h * 0.45;
+        const radius = Math.min(w, h) * 0.25;
+
+        // Heartbeat phase
+        heartbeatPhase += dt * (2 + bass * 3);
+
+        if (isRaft) {
+          // ── Raft Consensus ──
+          // Leader election based on progress
+          if (progress < 0.15) { leader = -1; splitBrain = false; }
+          else if (progress < 0.50) { leader = 2; splitBrain = false; }
+          else if (progress < 0.75) { leader = 2; splitBrain = true; }
+          else { leader = 2; splitBrain = false; }
+
+          // Draw edges (connections between nodes)
+          for (let i = 0; i < NUM_NODES; i++) {
+            for (let j = i + 1; j < NUM_NODES; j++) {
+              const partitioned = splitBrain && ((i < 2 && j >= 2) || (i >= 2 && j < 2));
+              const nx = nodes[i].x * w, ny = nodes[i].y * h;
+              const mx = nodes[j].x * w, my = nodes[j].y * h;
+              if (partitioned) {
+                // Dashed line for broken connection
+                c.setLineDash([4, 8]);
+                c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.1)`;
+              } else {
+                c.setLineDash([]);
+                c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.15 + mid * 0.2})`;
+              }
+              c.lineWidth = 1;
+              c.beginPath();
+              c.moveTo(nx, ny);
+              c.lineTo(mx, my);
+              c.stroke();
+            }
+          }
+          c.setLineDash([]);
+
+          // Draw nodes
+          for (let i = 0; i < NUM_NODES; i++) {
+            const nx = nodes[i].x * w, ny = nodes[i].y * h;
+            const isLeader = (i === leader);
+            const isFalseLeader = splitBrain && i === 0;
+            const nodeRadius = 12 + (isLeader ? 8 + bass * 10 : 0) + (isFalseLeader ? 6 + treble * 8 : 0);
+
+            // Heartbeat pulse for leader
+            if (isLeader) {
+              const pulse = Math.sin(heartbeatPhase * 4) * 0.5 + 0.5;
+              const pr = nodeRadius + 15 * pulse * energy;
+              c.beginPath();
+              c.arc(nx, ny, pr, 0, TAU);
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.08 * pulse})`;
+              c.fill();
+            }
+
+            // False leader pulse (red-ish during split brain)
+            if (isFalseLeader) {
+              const pulse = Math.sin(heartbeatPhase * 4.3) * 0.5 + 0.5;
+              const pr = nodeRadius + 12 * pulse;
+              c.beginPath();
+              c.arc(nx, ny, pr, 0, TAU);
+              c.fillStyle = `rgba(200,80,60,${0.1 * pulse})`;
+              c.fill();
+            }
+
+            // Node circle
+            c.beginPath();
+            c.arc(nx, ny, nodeRadius, 0, TAU);
+            if (isLeader) {
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.7 + bass * 0.3})`;
+            } else if (isFalseLeader) {
+              c.fillStyle = `rgba(200,100,60,${0.5 + treble * 0.3})`;
+            } else {
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.2 + mid * 0.15})`;
+            }
+            c.fill();
+
+            // Node label
+            c.fillStyle = BG;
+            c.font = `${Math.round(10 + (isLeader ? 2 : 0))}px monospace`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(`N${i}`, nx, ny);
+          }
+
+          // Leader label
+          if (leader >= 0) {
+            const lx = nodes[leader].x * w, ly = nodes[leader].y * h - 30;
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.6)`;
+            c.font = '11px monospace';
+            c.textAlign = 'center';
+            c.fillText('LEADER', lx, ly);
+          }
+          if (splitBrain) {
+            const fx = nodes[0].x * w, fy = nodes[0].y * h - 25;
+            c.fillStyle = 'rgba(200,80,60,0.5)';
+            c.font = '10px monospace';
+            c.textAlign = 'center';
+            c.fillText('SPLIT', fx, fy);
+          }
+
+          // Heartbeat waves radiating from leader
+          if (leader >= 0 && beat && !prevBeat) {
+            for (let i = 0; i < 3; i++) {
+              msgParticles.push({
+                x: nodes[leader].x * w, y: nodes[leader].y * h,
+                tx: nodes[(leader + i + 1) % NUM_NODES].x * w,
+                ty: nodes[(leader + i + 1) % NUM_NODES].y * h,
+                progress: 0, life: 1
+              });
+            }
+          }
+
+        } else if (isGossip) {
+          // ── Gossip Protocol ──
+          // 7 nodes in a ring
+          const gNodes = 7;
+          const gRadius = Math.min(w, h) * 0.28;
+          const gPositions = [];
+          for (let i = 0; i < gNodes; i++) {
+            const a = -Math.PI / 2 + (i * TAU) / gNodes;
+            gPositions.push({ x: cx + gRadius * Math.cos(a), y: cy + gRadius * Math.sin(a) });
+          }
+
+          // Infection spread follows progress (S-curve)
+          const numInfected = Math.min(gNodes, Math.floor(1 + (gNodes - 1) * Math.pow(progress, 0.6)));
+          infectedSet.clear();
+          for (let i = 0; i < numInfected; i++) infectedSet.add(i);
+
+          // Draw ring connections
+          for (let i = 0; i < gNodes; i++) {
+            const j = (i + 1) % gNodes;
+            const bothInfected = infectedSet.has(i) && infectedSet.has(j);
+            c.beginPath();
+            c.moveTo(gPositions[i].x, gPositions[i].y);
+            c.lineTo(gPositions[j].x, gPositions[j].y);
+            c.strokeStyle = bothInfected
+              ? `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.3 + mid * 0.3})`
+              : `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.08)`;
+            c.lineWidth = bothInfected ? 2 : 1;
+            c.stroke();
+          }
+
+          // Draw gossip nodes
+          for (let i = 0; i < gNodes; i++) {
+            const infected = infectedSet.has(i);
+            const nr = infected ? 14 + bass * 8 : 8;
+            // Infection glow
+            if (infected) {
+              c.beginPath();
+              c.arc(gPositions[i].x, gPositions[i].y, nr + 10 + energy * 8, 0, TAU);
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.06)`;
+              c.fill();
+            }
+            c.beginPath();
+            c.arc(gPositions[i].x, gPositions[i].y, nr, 0, TAU);
+            c.fillStyle = infected
+              ? `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.5 + bass * 0.4})`
+              : `rgba(100,95,85,0.3)`;
+            c.fill();
+            // Label
+            c.fillStyle = infected ? BG : `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+            c.font = '10px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(`${i}`, gPositions[i].x, gPositions[i].y);
+          }
+
+          // Gossip wave on beat
+          if (beat && !prevBeat && infectedSet.size > 0 && infectedSet.size < gNodes) {
+            const from = Array.from(infectedSet)[Math.floor(Math.random() * infectedSet.size)];
+            const to = (from + (Math.random() < 0.5 ? 1 : gNodes - 1)) % gNodes;
+            gossipWave.push({ from, to, progress: 0 });
+          }
+
+          // Render gossip waves
+          gossipWave = gossipWave.filter(g => g.progress < 1);
+          for (const g of gossipWave) {
+            g.progress += dt * 2;
+            const fp = gPositions[g.from], tp = gPositions[g.to];
+            const px = fp.x + (tp.x - fp.x) * g.progress;
+            const py = fp.y + (tp.y - fp.y) * g.progress;
+            const alpha = 1 - g.progress;
+            c.beginPath();
+            c.arc(px, py, 4, 0, TAU);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.7 * alpha})`;
+            c.fill();
+          }
+
+        } else {
+          // ── Vector Clocks ──
+          // 4 horizontal process lanes
+          const lanes = 4;
+          const laneH = h * 0.7 / lanes;
+          const laneTop = h * 0.12;
+          const laneLeft = w * 0.08;
+          const laneRight = w * 0.92;
+
+          // Update vector clocks with audio
+          for (let i = 0; i < lanes; i++) {
+            vcBars[i] += dt * (0.5 + [bass, mid, treble, energy][i] * 2);
+          }
+
+          for (let i = 0; i < lanes; i++) {
+            const y = laneTop + i * laneH + laneH / 2;
+
+            // Lane background
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.03)`;
+            c.fillRect(laneLeft, y - laneH * 0.35, laneRight - laneLeft, laneH * 0.7);
+
+            // Process label
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.5)`;
+            c.font = '11px monospace';
+            c.textAlign = 'right';
+            c.textBaseline = 'middle';
+            c.fillText(`P${i}`, laneLeft - 8, y);
+
+            // Timeline with events as dots
+            const eventSpacing = (laneRight - laneLeft) / 20;
+            const rate = [1.0, 1.333, 1.667, 2.0][i];
+            const numEvents = Math.floor(progress * 20 * rate);
+            for (let e = 0; e < Math.min(numEvents, 20); e++) {
+              const ex = laneLeft + e * eventSpacing / rate;
+              if (ex > laneRight) break;
+              const dotR = 3 + (e === numEvents - 1 ? [bass, mid, treble, energy][i] * 5 : 0);
+              c.beginPath();
+              c.arc(ex, y, dotR, 0, TAU);
+              c.fillStyle = e === numEvents - 1
+                ? `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.7 + [bass, mid, treble, energy][i] * 0.3})`
+                : `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.25)`;
+              c.fill();
+            }
+
+            // Playhead position
+            const px = laneLeft + progress * (laneRight - laneLeft);
+            c.beginPath();
+            c.arc(px, y, 2, 0, TAU);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.6)`;
+            c.fill();
+          }
+
+          // Message arrows between lanes on flux/beat
+          if (beat && !prevBeat) {
+            const from = Math.floor(Math.random() * lanes);
+            let to = Math.floor(Math.random() * lanes);
+            while (to === from) to = Math.floor(Math.random() * lanes);
+            const px = laneLeft + progress * (laneRight - laneLeft);
+            msgParticles.push({
+              x: px, y: laneTop + from * laneH + laneH / 2,
+              tx: px + 20, ty: laneTop + to * laneH + laneH / 2,
+              progress: 0, life: 1
+            });
+          }
+
+          // Vector clock value bars at bottom
+          const barW = w * 0.15;
+          const barH = 6;
+          const barY = h * 0.92;
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '9px monospace';
+          c.textAlign = 'center';
+          for (let i = 0; i < lanes; i++) {
+            const bx = w * 0.15 + i * (w * 0.7 / lanes);
+            const val = Math.min(1, (vcBars[i] % 10) / 10);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.12)`;
+            c.fillRect(bx, barY, barW * 0.8, barH);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.3 + [bass,mid,treble,energy][i] * 0.5})`;
+            c.fillRect(bx, barY, barW * 0.8 * val, barH);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+            c.fillText(`VC[${i}]`, bx + barW * 0.4, barY - 6);
+          }
+        }
+
+        // Message particles (shared between modes)
+        msgParticles = msgParticles.filter(p => p.life > 0);
+        for (const p of msgParticles) {
+          p.progress = Math.min(1, p.progress + dt * 3);
+          p.life -= dt * 1.5;
+          const px = p.x + (p.tx - p.x) * p.progress;
+          const py = p.y + (p.ty - p.y) * p.progress;
+          c.beginPath();
+          c.arc(px, py, 3, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.6 * p.life})`;
+          c.fill();
+          // Trail
+          c.beginPath();
+          c.moveTo(p.x + (p.tx - p.x) * Math.max(0, p.progress - 0.15), p.y + (p.ty - p.y) * Math.max(0, p.progress - 0.15));
+          c.lineTo(px, py);
+          c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.2 * p.life})`;
+          c.lineWidth = 1;
+          c.stroke();
+        }
+
+        prevBeat = beat;
+      }
+    };
+  }
+
   function createCategorySketch() {
     // Category objects as nodes, functors as arrows, monad as effect chain
     const catC = [
