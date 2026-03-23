@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "game":    (220, "Game Theory",              "囚徒困境的合作与背叛、鹰鸽博弈的种群演化、纳什均衡的收敛。博弈论——理性的和声。"),
     "dist":    (210, "Distributed Systems",     "Raft 共识的心跳与分裂、Gossip 协议的指数蔓延、向量时钟的因果多声部。分布式系统——协调即和声。"),
     "cat":     (200, "Category Theory",         "函子的结构保持、自然变换的路径无关、单子的不确定性链。范畴论——数学的数学。"),
     "type":    (190, "Type Systems",           "类型推断的和声收敛、子类型格的层级共鸣、Curry-Howard 的证明即程序。类型不是约束——是结构。"),
@@ -32,6 +33,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Game Theory
+    "game_1_prisoners_dilemma":        ("game", "Prisoner's Dilemma",        "5 种经典策略的循环锦标赛——合作=协和音程，背叛=三全音失谐，以牙还牙的胜出化为最终和弦。"),
+    "game_2_evolutionary_ess":         ("game", "Evolutionary Stable Strategy", "鹰与鸽的种群博弈——鹰鹰搏斗的代价、鸽鸽分享的柔和、种群比例向 ESS 均衡点漂移。"),
+    "game_3_nash_equilibrium":         ("game", "Nash Equilibrium",          "两个玩家在 5×5 收益矩阵中寻路——最佳回应动态逐步收敛，纳什均衡=完美五度的 C4+G4。"),
     # Distributed Systems
     "dist_1_raft_consensus":           ("dist", "Raft Consensus",           "5 节点集群的选举、心跳、网络分区与脑裂——两个 leader 共存的不谐和，最终愈合为统一心跳。"),
     "dist_2_gossip_protocol":          ("dist", "Gossip Protocol",          "7 节点环形拓扑的流行病传播——一个谣言指数蔓延，S 曲线收敛为全体合唱。"),

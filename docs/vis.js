@@ -75,6 +75,7 @@
   const sketchAuto = createAutomataSketch();
   const sketchType = createTypeSystemsSketch();
   const sketchDist = createDistributedSketch();
+  const sketchGame = createGameTheorySketch();
   const sketchCat = createCategorySketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
@@ -99,6 +100,7 @@
     type: sketchType,
     cat: sketchCat,
     dist: sketchDist,
+    game: sketchGame,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -3640,6 +3642,300 @@
     }
     return { draw };
   }
+  function createGameTheorySketch() {
+    // Prisoner's Dilemma: 5 strategy agents around a table
+    // ESS: hawk/dove population bars
+    // Nash: 5x5 grid with searching players
+    const STRATS = ['TFT', 'AllC', 'AllD', 'Rand', 'Grdg'];
+    let agents = [];
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      agents.push({ x: 0.5 + 0.28 * Math.cos(a), y: 0.45 + 0.28 * Math.sin(a), score: 0, coop: true });
+    }
+    let interactions = []; // {from, to, progress, type}  type: 'cc','cd','dc','dd'
+    let hawkRatio = 0.5;
+    let nashRow = 0, nashCol = 4;
+    let prevBeat = false;
+    let gridFlash = []; // {r, c, life}
+
+    return {
+      draw(api) {
+        const { ctx: c, w, h, dt, ts, audio, intensity, playhead, duration, stem } = api;
+        const progress = duration > 0 ? playhead / duration : 0;
+        const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+        const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+
+        c.fillStyle = BG;
+        c.fillRect(0, 0, w, h);
+
+        const isPD = stem.includes('prisoner');
+        const isESS = stem.includes('ess') || stem.includes('evolution');
+        const isNash = stem.includes('nash');
+
+        const cx = w / 2, cy = h * 0.45;
+
+        if (isPD) {
+          // ── Prisoner's Dilemma Tournament ──
+          // 5 agents in a circle, interactions flash between pairs
+          const radius = Math.min(w, h) * 0.26;
+
+          // Update scores based on progress
+          for (let i = 0; i < 5; i++) {
+            agents[i].score = (0.3 + progress * 0.7) * [0.85, 0.6, 0.7, 0.5, 0.75][i];
+            agents[i].coop = [true, true, false, Math.random() > 0.5, true][i];
+          }
+
+          // Draw connections between all pairs
+          for (let i = 0; i < 5; i++) {
+            for (let j = i + 1; j < 5; j++) {
+              const ax = agents[i].x * w, ay = agents[i].y * h;
+              const bx = agents[j].x * w, by = agents[j].y * h;
+              const alpha = 0.06 + mid * 0.08;
+              c.beginPath();
+              c.moveTo(ax, ay);
+              c.lineTo(bx, by);
+              c.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + alpha + ')';
+              c.lineWidth = 1;
+              c.stroke();
+            }
+          }
+
+          // Spawn interactions on beat
+          if (beat && !prevBeat) {
+            const i = Math.floor(Math.random() * 5);
+            let j = (i + 1 + Math.floor(Math.random() * 4)) % 5;
+            const types = ['cc', 'cd', 'dc', 'dd'];
+            interactions.push({ from: i, to: j, progress: 0, type: types[Math.floor(Math.random() * 4)] });
+          }
+
+          // Draw and update interactions
+          interactions = interactions.filter(int => int.progress < 1);
+          for (const int of interactions) {
+            int.progress += dt * 2;
+            const ax = agents[int.from].x * w, ay = agents[int.from].y * h;
+            const bx = agents[int.to].x * w, by = agents[int.to].y * h;
+            const px = ax + (bx - ax) * int.progress;
+            const py = ay + (by - ay) * int.progress;
+            const r = 4 + energy * 4;
+            const isCooperation = int.type === 'cc';
+            const isDefection = int.type === 'dd';
+            if (isCooperation) {
+              c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.8 - int.progress * 0.6) + ')';
+            } else if (isDefection) {
+              c.fillStyle = 'rgba(200,70,50,' + (0.8 - int.progress * 0.6) + ')';
+            } else {
+              c.fillStyle = 'rgba(160,140,80,' + (0.6 - int.progress * 0.4) + ')';
+            }
+            c.beginPath();
+            c.arc(px, py, r, 0, TAU);
+            c.fill();
+          }
+
+          // Draw agents
+          for (let i = 0; i < 5; i++) {
+            const ax = agents[i].x * w, ay = agents[i].y * h;
+            const scoreR = 10 + agents[i].score * 18 + bass * 5;
+
+            // Score glow
+            const glowR = scoreR + 10 * agents[i].score * energy;
+            c.beginPath();
+            c.arc(ax, ay, glowR, 0, TAU);
+            c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.05 + agents[i].score * 0.08) + ')';
+            c.fill();
+
+            // Agent circle
+            c.beginPath();
+            c.arc(ax, ay, scoreR, 0, TAU);
+            const bright = 0.3 + agents[i].score * 0.5 + mid * 0.2;
+            c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + bright + ')';
+            c.fill();
+
+            // Label
+            c.fillStyle = BG;
+            c.font = '9px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(STRATS[i], ax, ay);
+          }
+
+        } else if (isESS) {
+          // ── Evolutionary Stable Strategy ──
+          // Hawk/Dove population visualization as two competing bar groups
+
+          // Drift hawk ratio toward ESS (2/3) over time
+          const target = 2 / 3;
+          hawkRatio += (target - hawkRatio) * dt * 0.3;
+          hawkRatio += (Math.random() - 0.5) * dt * 0.5 * (1 - progress);
+
+          hawkRatio = Math.max(0.05, Math.min(0.95, hawkRatio));
+
+          const barW = w * 0.35;
+          const barH = h * 0.5;
+          const barY = h * 0.2;
+
+          // Hawk bar (left)
+          const hx = cx - barW - 20;
+          const hHeight = barH * hawkRatio;
+          c.fillStyle = 'rgba(200,80,50,' + (0.3 + bass * 0.4) + ')';
+          c.fillRect(hx, barY + barH - hHeight, barW, hHeight);
+          // Hawk bar border
+          c.strokeStyle = 'rgba(200,100,60,0.4)';
+          c.lineWidth = 1;
+          c.strokeRect(hx, barY, barW, barH);
+
+          // Dove bar (right)
+          const dx = cx + 20;
+          const dHeight = barH * (1 - hawkRatio);
+          c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.3 + treble * 0.4) + ')';
+          c.fillRect(dx, barY + barH - dHeight, barW, dHeight);
+          c.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.4)';
+          c.lineWidth = 1;
+          c.strokeRect(dx, barY, barW, barH);
+
+          // Labels
+          c.font = '12px monospace';
+          c.textAlign = 'center';
+          c.fillStyle = 'rgba(200,100,60,0.7)';
+          c.fillText('HAWK ' + (hawkRatio * 100).toFixed(0) + '%', hx + barW / 2, barY + barH + 20);
+          c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.7)';
+          c.fillText('DOVE ' + ((1 - hawkRatio) * 100).toFixed(0) + '%', dx + barW / 2, barY + barH + 20);
+
+          // ESS line
+          const essY = barY + barH * (1 - target);
+          c.setLineDash([4, 4]);
+          c.strokeStyle = 'rgba(255,255,255,0.2)';
+          c.beginPath();
+          c.moveTo(hx - 10, essY);
+          c.lineTo(dx + barW + 10, essY);
+          c.stroke();
+          c.setLineDash([]);
+          c.font = '9px monospace';
+          c.fillStyle = 'rgba(255,255,255,0.3)';
+          c.textAlign = 'left';
+          c.fillText('ESS', dx + barW + 15, essY + 3);
+
+          // Encounter particles
+          if (beat && !prevBeat) {
+            const ex = cx + (Math.random() - 0.5) * w * 0.6;
+            const ey = barY + Math.random() * barH;
+            const isHH = Math.random() < hawkRatio * hawkRatio;
+            gridFlash.push({ r: ex, c: ey, life: isHH ? 1.5 : 0.8 });
+          }
+          gridFlash = gridFlash.filter(f => f.life > 0);
+          for (const f of gridFlash) {
+            f.life -= dt * 2;
+            const pr = 3 + (1 - f.life) * 15;
+            const alpha = f.life * 0.4;
+            c.beginPath();
+            c.arc(f.r, f.c, pr, 0, TAU);
+            c.fillStyle = f.life > 1 ? 'rgba(200,70,50,' + alpha + ')' : 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + alpha + ')';
+            c.fill();
+          }
+
+        } else if (isNash) {
+          // ── Nash Equilibrium ──
+          // 5x5 payoff grid with two players searching
+          const gridSize = 5;
+          const cellSize = Math.min(w, h) * 0.12;
+          const gridW = gridSize * cellSize;
+          const gridH = gridSize * cellSize;
+          const ox = cx - gridW / 2;
+          const oy = cy - gridH / 2;
+
+          // Payoff values (symmetric coordination game, Nash at 2,2)
+          const payoffs = [
+            [3, 1, 0, 1, 0],
+            [1, 4, 2, 1, 0],
+            [0, 2, 6, 2, 1],
+            [1, 1, 2, 3, 1],
+            [0, 0, 1, 1, 2]
+          ];
+
+          // Players drift toward Nash (2,2) over time
+          nashRow += (2 - nashRow) * dt * 0.4 + (Math.random() - 0.5) * dt * 2 * (1 - progress);
+          nashCol += (2 - nashCol) * dt * 0.4 + (Math.random() - 0.5) * dt * 2 * (1 - progress);
+          nashRow = Math.max(0, Math.min(4, nashRow));
+          nashCol = Math.max(0, Math.min(4, nashCol));
+
+          const ri = Math.round(nashRow);
+          const ci = Math.round(nashCol);
+          const currentPayoff = payoffs[ri][ci];
+
+          // Draw grid cells
+          for (let r = 0; r < gridSize; r++) {
+            for (let col = 0; col < gridSize; col++) {
+              const px = ox + col * cellSize;
+              const py = oy + r * cellSize;
+              const val = payoffs[r][col];
+              const bright = val / 6;
+
+              // Cell background
+              const isNashCell = r === 2 && col === 2;
+              const isCurrent = r === ri && col === ci;
+              if (isCurrent) {
+                c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.3 + energy * 0.4) + ')';
+              } else if (isNashCell) {
+                c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.05 + progress * 0.15) + ')';
+              } else {
+                c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (bright * 0.08) + ')';
+              }
+              c.fillRect(px, py, cellSize, cellSize);
+
+              // Cell border
+              c.strokeStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.15)';
+              c.lineWidth = 1;
+              c.strokeRect(px, py, cellSize, cellSize);
+
+              // Payoff number
+              c.font = '11px monospace';
+              c.textAlign = 'center';
+              c.textBaseline = 'middle';
+              c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.2 + bright * 0.5) + ')';
+              c.fillText(val.toString(), px + cellSize / 2, py + cellSize / 2);
+            }
+          }
+
+          // Row player marker (left side, moves vertically)
+          const rowY = oy + nashRow * cellSize + cellSize / 2;
+          c.beginPath();
+          c.moveTo(ox - 15, rowY);
+          c.lineTo(ox - 5, rowY - 6);
+          c.lineTo(ox - 5, rowY + 6);
+          c.closePath();
+          c.fillStyle = 'rgba(200,100,60,' + (0.6 + bass * 0.4) + ')';
+          c.fill();
+
+          // Column player marker (top, moves horizontally)
+          const colX = ox + nashCol * cellSize + cellSize / 2;
+          c.beginPath();
+          c.moveTo(colX, oy - 15);
+          c.lineTo(colX - 6, oy - 5);
+          c.lineTo(colX + 6, oy - 5);
+          c.closePath();
+          c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.6 + treble * 0.4) + ')';
+          c.fill();
+
+          // Nash equilibrium label
+          if (ri === 2 && ci === 2) {
+            c.font = '10px monospace';
+            c.textAlign = 'center';
+            c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',' + (0.5 + energy * 0.5) + ')';
+            c.fillText('NASH EQUILIBRIUM', cx, oy + gridH + 25);
+          }
+
+          // Current payoff display
+          c.font = '10px monospace';
+          c.textAlign = 'center';
+          c.fillStyle = 'rgba(' + GOLD[0] + ',' + GOLD[1] + ',' + GOLD[2] + ',0.4)';
+          c.fillText('payoff: ' + currentPayoff, cx, oy + gridH + 40);
+
+        }
+
+        prevBeat = beat;
+      }
+    };
+  }
+
   function createDistributedSketch() {
     // 5 Raft nodes in a pentagon, gossip ring, vector clock timelines
     const NUM_NODES = 5;
