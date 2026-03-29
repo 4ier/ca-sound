@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "comp":    (230, "Compiler Pipeline",        "词法分析的 token 流、语法分析的 AST 生长、代码生成的机器节奏。源码的变形记。"),
     "game":    (220, "Game Theory",              "囚徒困境的合作与背叛、鹰鸽博弈的种群演化、纳什均衡的收敛。博弈论——理性的和声。"),
     "dist":    (210, "Distributed Systems",     "Raft 共识的心跳与分裂、Gossip 协议的指数蔓延、向量时钟的因果多声部。分布式系统——协调即和声。"),
     "cat":     (200, "Category Theory",         "函子的结构保持、自然变换的路径无关、单子的不确定性链。范畴论——数学的数学。"),
@@ -33,6 +34,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Compiler Pipeline
+    "comp_1_lexer":                    ("comp", "Lexer",                    "源码字符流化为 token——关键字=铜管 FM，标识符=纯正弦，运算符=打击 click。从左到右的立体声扫描。"),
+    "comp_2_parser":                   ("comp", "Parser",                   "token 流构建 AST——递归下降的八度下移，非终结符包裹终结符，树自底向上生长为和声塔。"),
+    "comp_3_codegen":                  ("comp", "Code Generation",          "AST 溶解为机器指令序列——LOAD/STORE/ADD/MUL/JMP 各有音色，寄存器分配即声部分配，4Hz 时钟脉冲贯穿。"),
     # Game Theory
     "game_1_prisoners_dilemma":        ("game", "Prisoner's Dilemma",        "5 种经典策略的循环锦标赛——合作=协和音程，背叛=三全音失谐，以牙还牙的胜出化为最终和弦。"),
     "game_2_evolutionary_ess":         ("game", "Evolutionary Stable Strategy", "鹰与鸽的种群博弈——鹰鹰搏斗的代价、鸽鸽分享的柔和、种群比例向 ESS 均衡点漂移。"),

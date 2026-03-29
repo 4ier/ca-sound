@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchCompiler = createCompilerSketch();
   const sketchGameOfLife = createGameOfLifeSketch();
   const sketchFractal = createFractalSketch();
   const sketchLambda = createLambdaSketch();
@@ -81,6 +82,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    comp: sketchCompiler,
     gol: sketchGameOfLife,
     fractal: sketchFractal,
     lambda: sketchLambda,
@@ -530,6 +532,219 @@
       seed += dt;
     }
     return { resize, draw };
+  }
+  function createCompilerSketch() {
+    const TOKENS = [
+      {t:'kw',v:'let'},{t:'id',v:'x'},{t:'op',v:'='},{t:'pn',v:'('},
+      {t:'lit',v:'3'},{t:'op',v:'+'},{t:'id',v:'y'},{t:'pn',v:')'},
+      {t:'op',v:'*'},{t:'id',v:'f'},{t:'pn',v:'('},{t:'id',v:'z'},
+      {t:'sep',v:','},{t:'lit',v:'10'},{t:'pn',v:')'},{t:'sep',v:';'},
+      {t:'kw',v:'if'},{t:'id',v:'x'},{t:'op',v:'>'},{t:'lit',v:'0'},
+      {t:'kw',v:'then'},{t:'id',v:'x'},{t:'kw',v:'else'},{t:'op',v:'-'},
+      {t:'id',v:'x'},{t:'sep',v:';'}
+    ];
+    const TCOL = {
+      kw:[201,168,76],id:[160,155,140],op:[220,90,60],
+      lit:[120,180,100],pn:[180,170,150],sep:[100,95,85]
+    };
+    const AST = [
+      {d:0,t:'program',ch:[1,8]},
+      {d:1,t:'let',ch:[2,3]},
+      {d:2,t:'id',v:'x',ch:[]},
+      {d:2,t:'binop',v:'*',ch:[4,7]},
+      {d:3,t:'binop',v:'+',ch:[5,6]},
+      {d:4,t:'lit',v:'3',ch:[]},{d:4,t:'id',v:'y',ch:[]},
+      {d:3,t:'call',v:'f',ch:[]},
+      {d:1,t:'if',ch:[9,11,12]},
+      {d:2,t:'binop',v:'>',ch:[10]},
+      {d:3,t:'id',v:'x',ch:[]},
+      {d:2,t:'id',v:'x',ch:[]},
+      {d:2,t:'unary',v:'-x',ch:[]}
+    ];
+    const OPS = [
+      'LOAD 3','LOAD y','ADD','PUSH','LOAD z','PUSH','LOAD 10',
+      'PUSH','CALL f','POP','MUL','STORE x',
+      'LOAD x','LOAD 0','CMP >','JZ else','LOAD x','JMP end',
+      'LOAD x','NEG','RET'
+    ];
+    const s = {
+      mode: 'lexer', cursor: 0, acc: 0, glows: null,
+      astGlow: null, opIdx: 0, opGlow: null, lastStem: ''
+    };
+    function init() {
+      s.glows = new Float32Array(TOKENS.length);
+      s.astGlow = new Float32Array(AST.length);
+      s.opGlow = new Float32Array(OPS.length);
+      s.cursor = 0; s.opIdx = 0; s.acc = 0;
+    }
+    function modeFor(stem) {
+      if (!stem) return 'lexer';
+      const sl = stem.toLowerCase();
+      if (sl.indexOf('parser') >= 0 || sl.indexOf('2') >= 0) return 'parser';
+      if (sl.indexOf('codegen') >= 0 || sl.indexOf('3') >= 0) return 'codegen';
+      return 'lexer';
+    }
+    function draw(api) {
+      const m = modeFor(api.stem);
+      if (m !== s.mode || api.stem !== s.lastStem) {
+        s.mode = m; s.lastStem = api.stem; init();
+      }
+      if (!s.glows) init();
+      const {ctx:c, w, h, dt, audio:a} = api;
+      c.fillStyle = '#0c0b0a'; c.fillRect(0,0,w,h);
+      if (s.mode === 'lexer') drawLexer(c,w,h,dt,a);
+      else if (s.mode === 'parser') drawParser(c,w,h,dt,a);
+      else drawCodegen(c,w,h,dt,a);
+    }
+    function drawLexer(c,w,h,dt,a) {
+      const n = TOKENS.length;
+      s.acc += dt * (3 + a.bass * 12 + a.energy * 8);
+      if (a.beat) s.acc += 2;
+      while (s.acc >= 1) { s.cursor = (s.cursor+1) % n; s.glows[s.cursor] = 1; s.acc -= 1; }
+      const cols = 6, rows = Math.ceil(n/cols);
+      const cw = w / (cols + 1), rh = h / (rows + 2);
+      c.font = Math.max(11, Math.min(18, rh*0.35|0)) + 'px monospace';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (let i = 0; i < n; i++) {
+        s.glows[i] = Math.max(0, s.glows[i] - dt * 1.5);
+        const col = i % cols, row = (i / cols)|0;
+        const x = cw * (col + 1), y = rh * (row + 1.5);
+        const g = s.glows[i];
+        const tc = TCOL[TOKENS[i].t] || TCOL.id;
+        const bright = 0.3 + g * 0.7;
+        c.fillStyle = 'rgba('+tc[0]+','+tc[1]+','+tc[2]+','+ bright +')';
+        if (g > 0.3) {
+          c.shadowColor = 'rgba('+tc[0]+','+tc[1]+','+tc[2]+',0.6)';
+          c.shadowBlur = 8 + g * 12;
+        }
+        c.fillText(TOKENS[i].v, x, y);
+        c.shadowBlur = 0;
+        // cursor marker
+        if (i === s.cursor) {
+          c.strokeStyle = 'rgba(201,168,76,' + (0.4+g*0.6) + ')';
+          c.lineWidth = 1.5;
+          const tw = c.measureText(TOKENS[i].v).width;
+          c.strokeRect(x - tw/2 - 6, y - rh*0.3, tw + 12, rh*0.55);
+        }
+      }
+      // Scanning beam
+      const beamX = (s.cursor / n) * w;
+      c.strokeStyle = 'rgba(201,168,76,0.15)';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(beamX, 0); c.lineTo(beamX, h); c.stroke();
+    }
+    function drawParser(c,w,h,dt,a) {
+      const n = AST.length;
+      s.acc += dt * (2 + a.mid * 8 + a.energy * 5);
+      if (a.beat) s.acc += 1.5;
+      while (s.acc >= 1) { s.cursor = (s.cursor+1) % n; s.astGlow[s.cursor] = 1; s.acc -= 1; }
+      const maxD = 4;
+      // Layout: vertical levels by depth, horizontal spread
+      const levelCounts = new Array(maxD+1).fill(0);
+      const levelIdx = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const d = Math.min(AST[i].d, maxD);
+        levelIdx[i] = levelCounts[d]++;
+      }
+      const nodeR = Math.min(w, h) * 0.03;
+      for (let i = 0; i < n; i++) {
+        s.astGlow[i] = Math.max(0, s.astGlow[i] - dt * 1.2);
+        const d = Math.min(AST[i].d, maxD);
+        const lc = levelCounts[d];
+        const x = w * (levelIdx[i] + 1) / (lc + 1);
+        const y = h * (d + 1) / (maxD + 2);
+        const g = s.astGlow[i];
+        // Draw edges to children
+        for (const ci of AST[i].ch) {
+          const cd = Math.min(AST[ci].d, maxD);
+          const clc = levelCounts[cd];
+          const cx = w * (levelIdx[ci] + 1) / (clc + 1);
+          const cy = h * (cd + 1) / (maxD + 2);
+          c.strokeStyle = 'rgba(201,168,76,' + (0.08 + g*0.2) + ')';
+          c.lineWidth = 0.8 + g;
+          c.beginPath(); c.moveTo(x, y); c.lineTo(cx, cy); c.stroke();
+        }
+        // Node circle
+        const isLeaf = AST[i].ch.length === 0;
+        const alpha = 0.3 + g * 0.7;
+        if (isLeaf) {
+          c.fillStyle = 'rgba(160,155,140,' + alpha + ')';
+        } else {
+          c.fillStyle = 'rgba(201,168,76,' + alpha + ')';
+        }
+        if (g > 0.2) {
+          c.shadowColor = 'rgba(201,168,76,' + g*0.5 + ')';
+          c.shadowBlur = 6 + g * 10;
+        }
+        c.beginPath(); c.arc(x, y, nodeR * (isLeaf ? 0.7 : 1.0 + g*0.3), 0, Math.PI*2); c.fill();
+        c.shadowBlur = 0;
+        // Label
+        c.fillStyle = 'rgba(12,11,10,' + (0.6+g*0.4) + ')';
+        c.font = Math.max(9, nodeR*0.9|0) + 'px monospace';
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        const label = AST[i].v || AST[i].t;
+        c.fillText(label.substring(0,4), x, y);
+      }
+    }
+    function drawCodegen(c,w,h,dt,a) {
+      const n = OPS.length;
+      s.acc += dt * (4 + a.treble * 10 + a.energy * 6);
+      if (a.beat) s.acc += 2;
+      while (s.acc >= 1) { s.opIdx = (s.opIdx+1) % n; s.opGlow[s.opIdx] = 1; s.acc -= 1; }
+      const cols = 3, rows = Math.ceil(n/cols);
+      const cw = w / (cols + 0.5), rh = h / (rows + 1.5);
+      c.font = Math.max(10, Math.min(14, rh*0.3|0)) + 'px monospace';
+      c.textAlign = 'left'; c.textBaseline = 'middle';
+      // Register bars at bottom
+      const regY = h - rh * 0.8;
+      const regW = w / 10;
+      for (let r = 0; r < 8; r++) {
+        const rx = regW * (r + 1);
+        const fill = (s.opIdx % 8 === r) ? 0.6 : 0.12;
+        c.fillStyle = 'rgba(201,168,76,' + fill + ')';
+        c.fillRect(rx - regW*0.35, regY, regW*0.7, rh*0.25);
+        c.fillStyle = 'rgba(160,155,140,0.4)';
+        c.font = Math.max(8, rh*0.18|0) + 'px monospace';
+        c.textAlign = 'center';
+        c.fillText('R'+r, rx, regY + rh*0.35);
+      }
+      // Instruction tape
+      c.font = Math.max(10, Math.min(14, rh*0.3|0)) + 'px monospace';
+      c.textAlign = 'left';
+      for (let i = 0; i < n; i++) {
+        s.opGlow[i] = Math.max(0, s.opGlow[i] - dt * 1.8);
+        const col = i % cols, row = (i / cols)|0;
+        const x = cw * (col + 0.3), y = rh * (row + 0.8);
+        const g = s.opGlow[i];
+        const isCurrent = i === s.opIdx;
+        // Background highlight
+        if (g > 0.1 || isCurrent) {
+          c.fillStyle = 'rgba(201,168,76,' + (g * 0.12 + (isCurrent ? 0.06 : 0)) + ')';
+          c.fillRect(x - 4, y - rh*0.2, cw*0.85, rh*0.45);
+        }
+        // Opcode text
+        const alpha = 0.25 + g * 0.75;
+        const isJump = OPS[i].indexOf('J') === 0;
+        const isArith = OPS[i].indexOf('ADD') === 0 || OPS[i].indexOf('MUL') === 0;
+        if (isJump) c.fillStyle = 'rgba(220,90,60,' + alpha + ')';
+        else if (isArith) c.fillStyle = 'rgba(120,180,100,' + alpha + ')';
+        else c.fillStyle = 'rgba(201,168,76,' + alpha + ')';
+        if (g > 0.4) {
+          c.shadowColor = 'rgba(201,168,76,' + g*0.4 + ')';
+          c.shadowBlur = 5 + g * 8;
+        }
+        c.fillText(OPS[i], x, y);
+        c.shadowBlur = 0;
+        // Line number
+        c.fillStyle = 'rgba(100,95,85,0.3)';
+        c.fillText(String(i).padStart(2,'0'), x - cw*0.15, y);
+      }
+      // Clock pulse indicator
+      const pulse = Math.sin(performance.now() * 0.025) > 0.7 ? 0.5 : 0.1;
+      c.fillStyle = 'rgba(201,168,76,' + pulse + ')';
+      c.beginPath(); c.arc(w - 20, 20, 5, 0, Math.PI*2); c.fill();
+    }
+    return { draw };
   }
   function createGameOfLifeSketch() {
     const s = {
