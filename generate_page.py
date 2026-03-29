@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "sig":     (240, "Signal Processing",         "傅里叶分解的频谱剥离、卷积核的音色重塑、小波变换的多尺度追踪。信号处理——用信号处理来声化信号处理。"),
     "comp":    (230, "Compiler Pipeline",        "词法分析的 token 流、语法分析的 AST 生长、代码生成的机器节奏。源码的变形记。"),
     "game":    (220, "Game Theory",              "囚徒困境的合作与背叛、鹰鸽博弈的种群演化、纳什均衡的收敛。博弈论——理性的和声。"),
     "dist":    (210, "Distributed Systems",     "Raft 共识的心跳与分裂、Gossip 协议的指数蔓延、向量时钟的因果多声部。分布式系统——协调即和声。"),
@@ -35,6 +36,9 @@ SERIES = {
 
 TRACKS = {
     # Compiler Pipeline
+    "sig_1_dft_decomposition":         ("sig", "DFT Decomposition",           "复杂音色被逐一拆解为傅里叶分量——谐波从残留中抽出，按频率散布在立体声场。原始声音溶解为光谱。"),
+    "sig_2_convolution":               ("sig", "Convolution",                 "脉冲序列遭遇四种卷积核：恒等→低通模糊→共振带通→梳状回声。干声左、湿声右，卷积核即音色。"),
+    "sig_3_wavelet_transform":         ("sig", "Wavelet Transform",           "啁啾信号被 12 阶 Morlet 小波分解——低频小波=左声道缓慢脉动，高频小波=右声道细碎微光。时频结构显现。"),
     "comp_1_lexer":                    ("comp", "Lexer",                    "源码字符流化为 token——关键字=铜管 FM，标识符=纯正弦，运算符=打击 click。从左到右的立体声扫描。"),
     "comp_2_parser":                   ("comp", "Parser",                   "token 流构建 AST——递归下降的八度下移，非终结符包裹终结符，树自底向上生长为和声塔。"),
     "comp_3_codegen":                  ("comp", "Code Generation",          "AST 溶解为机器指令序列——LOAD/STORE/ADD/MUL/JMP 各有音色，寄存器分配即声部分配，4Hz 时钟脉冲贯穿。"),

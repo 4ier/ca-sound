@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchSignal = createSignalProcessingSketch();
   const sketchCompiler = createCompilerSketch();
   const sketchGameOfLife = createGameOfLifeSketch();
   const sketchFractal = createFractalSketch();
@@ -82,6 +83,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    sig: sketchSignal,
     comp: sketchCompiler,
     gol: sketchGameOfLife,
     fractal: sketchFractal,
@@ -533,6 +535,304 @@
     }
     return { resize, draw };
   }
+  function createSignalProcessingSketch() {
+    // DFT: frequency bins as vertical bars being extracted
+    // Convolution: impulse + kernel visualization
+    // Wavelet: multi-scale time-frequency grid
+    const N_BINS = 16;
+    const N_SCALES = 12;
+    let bins = [];
+    let extracted = [];
+    let impulses = [];
+    let waveletGrid = [];
+    let mode = 0; // 0=dft, 1=conv, 2=wavelet
+    let phaseT = 0;
+    let lastBeat = 0;
+
+    function initBins() {
+      bins = [];
+      extracted = [];
+      for (let i = 0; i < N_BINS; i++) {
+        bins.push({ freq: 110 * (i + 1), amp: 1.0 / Math.pow(i + 1, 0.7), present: true, extractT: 0 });
+        extracted.push({ x: 0, y: 0, amp: 0, pan: i / (N_BINS - 1) });
+      }
+    }
+
+    function initImpulses() {
+      impulses = [];
+      for (let i = 0; i < 20; i++) {
+        impulses.push({ x: i / 20, age: 0, active: false });
+      }
+    }
+
+    function initWavelet() {
+      waveletGrid = [];
+      for (let s = 0; s < N_SCALES; s++) {
+        const row = [];
+        for (let t = 0; t < 32; t++) {
+          row.push({ mag: 0, targetMag: 0 });
+        }
+        waveletGrid.push(row);
+      }
+    }
+
+    initBins();
+    initImpulses();
+    initWavelet();
+
+    function resize() {}
+
+    function draw(api) {
+      const { ctx, w, h, dt, audio, intensity, stem, playhead } = api;
+      const { bass, mid, treble, energy, rms, flux, transient, beat } = audio;
+      phaseT += dt;
+
+      // Mode detection from stem name
+      if (stem.includes('dft')) mode = 0;
+      else if (stem.includes('conv')) mode = 1;
+      else if (stem.includes('wavelet')) mode = 2;
+      else mode = Math.floor(phaseT / 20) % 3;
+
+      ctx.fillStyle = 'rgba(12,11,10,0.12)';
+      ctx.fillRect(0, 0, w, h);
+
+      if (mode === 0) drawDFT(ctx, w, h, dt, audio, intensity);
+      else if (mode === 1) drawConvolution(ctx, w, h, dt, audio, intensity);
+      else drawWavelet(ctx, w, h, dt, audio, intensity);
+    }
+
+    function drawDFT(ctx, w, h, dt, audio, intensity) {
+      const { bass, mid, treble, energy, beat } = audio;
+      const cx = w / 2, cy = h * 0.35;
+      const barW = w * 0.04;
+      const maxH = h * 0.5;
+
+      // Update extraction based on energy
+      if (beat) {
+        for (let i = N_BINS - 1; i >= 0; i--) {
+          if (bins[i].present && bins[i].extractT === 0) {
+            bins[i].extractT = phaseT;
+            bins[i].present = false;
+            break;
+          }
+        }
+      }
+
+      // Draw residual spectrum (center, vertical bars)
+      for (let i = 0; i < N_BINS; i++) {
+        const b = bins[i];
+        const barH = maxH * b.amp * (b.present ? 1.0 : Math.max(0, 1.0 - (phaseT - b.extractT) * 0.5));
+        const x = cx + (i - N_BINS / 2) * (barW + 4);
+        const alpha = b.present ? 0.7 + energy * 0.3 : Math.max(0.05, 0.4 - (phaseT - b.extractT) * 0.1);
+
+        ctx.fillStyle = `rgba(201,168,76,${alpha.toFixed(2)})`;
+        ctx.fillRect(x, cy - barH / 2, barW, barH);
+
+        // Glow on present bins
+        if (b.present) {
+          ctx.shadowColor = `rgba(201,168,76,${(energy * 0.4).toFixed(2)})`;
+          ctx.shadowBlur = 8;
+          ctx.fillRect(x, cy - barH / 2, barW, barH);
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      // Draw extracted bins floating to their pan positions
+      for (let i = 0; i < N_BINS; i++) {
+        const b = bins[i];
+        if (b.extractT > 0) {
+          const age = phaseT - b.extractT;
+          const targetX = b.amp < 0.5 ? w * 0.1 + i * (w * 0.05) : w * 0.5 + i * (w * 0.03);
+          const targetY = h * 0.75 + Math.sin(i * 0.7) * h * 0.08;
+          const t = Math.min(1, age * 0.3);
+          const ex = cx + (targetX - cx) * t;
+          const ey = cy + (targetY - cy) * t;
+          const r = 3 + b.amp * 8 + Math.sin(phaseT * 3 + i) * 2;
+          const alpha = Math.min(0.8, age * 0.3);
+
+          ctx.beginPath();
+          ctx.arc(ex, ey, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(201,168,76,${alpha.toFixed(2)})`;
+          ctx.fill();
+
+          // Frequency label
+          ctx.fillStyle = `rgba(201,168,76,${(alpha * 0.5).toFixed(2)})`;
+          ctx.font = '9px monospace';
+          ctx.fillText(`${(110 * (i + 1))}`, ex - 10, ey + r + 12);
+        }
+      }
+
+      // Title
+      ctx.fillStyle = 'rgba(201,168,76,0.3)';
+      ctx.font = '11px monospace';
+      ctx.fillText('DFT DECOMPOSITION', 20, 25);
+    }
+
+    function drawConvolution(ctx, w, h, dt, audio, intensity) {
+      const { bass, mid, treble, energy, beat, flux } = audio;
+
+      // Impulse train (left side) and convolved output (right side)
+      const splitX = w * 0.5;
+
+      // Update impulses
+      if (beat) {
+        for (let imp of impulses) {
+          if (!imp.active) {
+            imp.active = true;
+            imp.age = 0;
+            break;
+          }
+        }
+      }
+
+      // Draw dry side label
+      ctx.fillStyle = 'rgba(201,168,76,0.25)';
+      ctx.font = '10px monospace';
+      ctx.fillText('DRY (impulse)', 20, 25);
+      ctx.fillText('WET (convolved)', splitX + 20, 25);
+
+      // Draw dividing line
+      ctx.strokeStyle = 'rgba(201,168,76,0.1)';
+      ctx.setLineDash([4, 8]);
+      ctx.beginPath();
+      ctx.moveTo(splitX, 0);
+      ctx.lineTo(splitX, h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Impulse visualization (sharp spikes)
+      const impY = h * 0.5;
+      for (let i = 0; i < impulses.length; i++) {
+        const imp = impulses[i];
+        if (imp.active) {
+          imp.age += dt;
+          if (imp.age > 3) { imp.active = false; continue; }
+          const x = 40 + (i / impulses.length) * (splitX - 80);
+          const spikeH = h * 0.3 * Math.exp(-imp.age * 2);
+          const alpha = Math.max(0, 1 - imp.age * 0.5);
+
+          ctx.strokeStyle = `rgba(201,168,76,${alpha.toFixed(2)})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, impY);
+          ctx.lineTo(x, impY - spikeH);
+          ctx.stroke();
+
+          // Convolved version on right side (spread out, softer)
+          const wx = splitX + 40 + (i / impulses.length) * (splitX - 80);
+          const spread = 3 + energy * 8;
+          const wetAlpha = alpha * 0.6;
+          for (let j = -3; j <= 3; j++) {
+            const jx = wx + j * spread;
+            const jh = spikeH * Math.exp(-Math.abs(j) * 0.5) * (0.5 + treble * 0.5);
+            ctx.strokeStyle = `rgba(201,168,76,${(wetAlpha * Math.exp(-Math.abs(j) * 0.3)).toFixed(2)})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(jx, impY);
+            ctx.lineTo(jx, impY - jh);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Kernel shape indicator at bottom
+      const kernelY = h * 0.82;
+      const kernelW = w * 0.3;
+      ctx.strokeStyle = 'rgba(201,168,76,0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 60; i++) {
+        const t = i / 59;
+        const x = splitX + (w - splitX) * 0.2 + t * kernelW;
+        // Kernel shape morphs with mid frequency
+        const gauss = Math.exp(-Math.pow((t - 0.5) * 6, 2));
+        const ring = Math.sin(t * Math.PI * 8 * (1 + mid)) * Math.exp(-Math.abs(t - 0.5) * 8);
+        const shape = gauss * (1 - mid) + ring * mid;
+        const y = kernelY - shape * h * 0.1;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(201,168,76,0.2)';
+      ctx.font = '9px monospace';
+      ctx.fillText('kernel h(t)', splitX + (w - splitX) * 0.2, kernelY + 15);
+    }
+
+    function drawWavelet(ctx, w, h, dt, audio, intensity) {
+      const { bass, mid, treble, energy, rms } = audio;
+      const gridL = w * 0.08;
+      const gridR = w * 0.92;
+      const gridT = h * 0.1;
+      const gridB = h * 0.85;
+      const cellW = (gridR - gridL) / 32;
+      const cellH = (gridB - gridT) / N_SCALES;
+
+      // Update wavelet grid: shift left and add new column
+      const newCol = Math.floor(phaseT * 3) % 32;
+      for (let s = 0; s < N_SCALES; s++) {
+        // Each scale responds to different frequency band
+        const bandVal = s < 4 ? bass : s < 8 ? mid : treble;
+        const scaleFactor = 0.3 + bandVal * 0.7;
+        waveletGrid[s][newCol].targetMag = scaleFactor * (0.5 + Math.random() * 0.5);
+        waveletGrid[s][newCol].mag += (waveletGrid[s][newCol].targetMag - waveletGrid[s][newCol].mag) * 0.3;
+      }
+
+      // Draw grid cells
+      for (let s = 0; s < N_SCALES; s++) {
+        for (let t = 0; t < 32; t++) {
+          const mag = waveletGrid[s][t].mag;
+          if (mag < 0.05) continue;
+          const x = gridL + t * cellW;
+          const y = gridT + (N_SCALES - 1 - s) * cellH;  // Low freq at bottom
+          const alpha = mag * 0.7;
+          const r = 201, g = Math.floor(168 * mag), b = Math.floor(76 * mag);
+          ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
+          ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+        }
+      }
+
+      // Scale labels (left)
+      ctx.fillStyle = 'rgba(201,168,76,0.25)';
+      ctx.font = '8px monospace';
+      for (let s = 0; s < N_SCALES; s += 2) {
+        const freq = Math.round(110 * Math.pow(2, s * 4 / N_SCALES));
+        const y = gridT + (N_SCALES - 1 - s) * cellH + cellH / 2 + 3;
+        ctx.fillText(`${freq}Hz`, 4, y);
+      }
+
+      // Scanning cursor
+      const cursorX = gridL + newCol * cellW;
+      ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cursorX, gridT);
+      ctx.lineTo(cursorX, gridB);
+      ctx.stroke();
+
+      // Title
+      ctx.fillStyle = 'rgba(201,168,76,0.3)';
+      ctx.font = '11px monospace';
+      ctx.fillText('WAVELET SCALOGRAM', 20, 25);
+
+      // Time axis
+      ctx.fillStyle = 'rgba(201,168,76,0.15)';
+      ctx.font = '8px monospace';
+      ctx.fillText('time →', gridR - 40, gridB + 15);
+      ctx.fillText('← scale', 4, gridT - 5);
+
+      // Decay old cells
+      for (let s = 0; s < N_SCALES; s++) {
+        for (let t = 0; t < 32; t++) {
+          if (t !== newCol) {
+            waveletGrid[s][t].mag *= 0.985;
+          }
+        }
+      }
+    }
+
+    return { resize, draw };
+  }
+
   function createCompilerSketch() {
     const TOKENS = [
       {t:'kw',v:'let'},{t:'id',v:'x'},{t:'op',v:'='},{t:'pn',v:'('},
