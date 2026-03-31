@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchTopo = createTopologySketch();
   const sketchSignal = createSignalProcessingSketch();
   const sketchCompiler = createCompilerSketch();
   const sketchGameOfLife = createGameOfLifeSketch();
@@ -83,6 +84,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    topo: sketchTopo,
     sig: sketchSignal,
     comp: sketchCompiler,
     gol: sketchGameOfLife,
@@ -534,6 +536,201 @@
       seed += dt;
     }
     return { resize, draw };
+  }
+  function createTopologySketch() {
+    // Topology: Euler characteristic (polyhedra), knot invariants (trefoil), Möbius strip
+    // Platonic solids: wireframe vertices + edges, chi=2 invariant display
+    const solids = [
+      { name: 'Tetra', V: 4, E: 6, F: 4,
+        verts: [[0,-1,0],[0.94,0.33,0],[-0.47,0.33,0.82],[-0.47,0.33,-0.82]] },
+      { name: 'Cube', V: 8, E: 12, F: 6,
+        verts: [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] },
+      { name: 'Octa', V: 6, E: 12, F: 8,
+        verts: [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]] },
+      { name: 'Dodeca', V: 20, E: 30, F: 12, verts: [] },
+      { name: 'Icosa', V: 12, E: 30, F: 20, verts: [] }
+    ];
+    // Generate dodecahedron vertices
+    const phi = (1 + Math.sqrt(5)) / 2;
+    const iphi = 1 / phi;
+    solids[3].verts = [
+      [1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1],
+      [0,phi,iphi],[0,phi,-iphi],[0,-phi,iphi],[0,-phi,-iphi],
+      [iphi,0,phi],[-iphi,0,phi],[iphi,0,-phi],[-iphi,0,-phi],
+      [phi,iphi,0],[phi,-iphi,0],[-phi,iphi,0],[-phi,-iphi,0]
+    ];
+    // Icosahedron vertices
+    solids[4].verts = [
+      [0,1,phi],[0,1,-phi],[0,-1,phi],[0,-1,-phi],
+      [1,phi,0],[-1,phi,0],[1,-phi,0],[-1,-phi,0],
+      [phi,0,1],[-phi,0,1],[phi,0,-1],[-phi,0,-1]
+    ];
+    // Normalize all verts to unit sphere
+    for (const s of solids) {
+      s.verts = s.verts.map(v => {
+        const len = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+        return [v[0]/len, v[1]/len, v[2]/len];
+      });
+      // Build edges: connect vertices within threshold distance
+      s.edges = [];
+      const dists = [];
+      for (let i = 0; i < s.verts.length; i++)
+        for (let j = i+1; j < s.verts.length; j++) {
+          const d = Math.sqrt(s.verts.reduce((a,_,k) => a + (s.verts[i][k]-s.verts[j][k])**2, 0));
+          dists.push(d);
+        }
+      dists.sort((a,b) => a-b);
+      const threshold = dists[s.E - 1] * 1.01;
+      for (let i = 0; i < s.verts.length; i++)
+        for (let j = i+1; j < s.verts.length; j++) {
+          const d = Math.sqrt(s.verts.reduce((a,_,k) => a + (s.verts[i][k]-s.verts[j][k])**2, 0));
+          if (d <= threshold) s.edges.push([i, j]);
+        }
+    }
+    let angle = 0;
+    // Trefoil knot parametric
+    function trefoil(tt) {
+      return [Math.sin(tt)+2*Math.sin(2*tt), Math.cos(tt)-2*Math.cos(2*tt), -Math.sin(3*tt)];
+    }
+    function draw(api) {
+      const { ctx: c, w, h, dt, audio, playhead, duration, hasTrack } = api;
+      const { bass, mid, treble, energy, beat } = audio;
+      c.fillStyle = BG; c.fillRect(0, 0, w, h);
+      const stem = api.stem || '';
+      angle += dt * (0.3 + energy * 0.5);
+      const cx = w / 2, cy = h / 2;
+      const sc = Math.min(w, h) * 0.28;
+
+      if (stem.includes('euler')) {
+        // Euler Characteristic: cycle through solids based on playhead
+        const progress = hasTrack ? playhead / Math.max(duration, 1) : (Date.now() % 50000) / 50000;
+        const solidIdx = Math.min(Math.floor(progress * 5), 4);
+        const s = solids[solidIdx];
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const cosB = Math.cos(angle * 0.7), sinB = Math.sin(angle * 0.7);
+        // Project vertices
+        const proj = s.verts.map(v => {
+          let [x, y, z] = v;
+          const x1 = x * cosA - z * sinA; const z1 = x * sinA + z * cosA;
+          const y1 = y * cosB - z1 * sinB; const z2 = y * sinB + z1 * cosB;
+          const scale = sc * (1.2 + z2 * 0.3 + bass * 0.2);
+          return [cx + x1 * scale, cy + y1 * scale, z2];
+        });
+        // Draw edges
+        const ga = 0.4 + mid * 0.4;
+        c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${ga})`;
+        c.lineWidth = 1.2 + energy;
+        for (const [i, j] of s.edges) {
+          c.beginPath(); c.moveTo(proj[i][0], proj[i][1]); c.lineTo(proj[j][0], proj[j][1]); c.stroke();
+        }
+        // Draw vertices
+        for (const [px, py, pz] of proj) {
+          const r = 2.5 + treble * 3 + (pz + 1) * 1.5;
+          const va = 0.5 + pz * 0.3 + beat * 0.3;
+          c.beginPath(); c.arc(px, py, r, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${va})`;
+          c.fill();
+        }
+        // Chi=2 invariant label
+        c.font = `${Math.max(14, h*0.025)}px monospace`;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.7)`;
+        c.textAlign = 'center';
+        c.fillText(`${s.name}  V=${s.V}  E=${s.E}  F=${s.F}`, cx, h * 0.88);
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.5 + beat * 0.4})`;
+        c.fillText(`χ = V − E + F = ${s.V} − ${s.E} + ${s.F} = 2`, cx, h * 0.93);
+
+      } else if (stem.includes('knot')) {
+        // Knot Invariants: draw trefoil knot with crossings highlighted
+        const nPts = 200;
+        const pts = [];
+        for (let i = 0; i < nPts; i++) {
+          const tt = (i / nPts) * TAU;
+          const [kx, ky, kz] = trefoil(tt);
+          const cosR = Math.cos(angle * 0.5), sinR = Math.sin(angle * 0.5);
+          const rx = kx * cosR - kz * sinR; const rz = kx * sinR + kz * cosR;
+          const scale = sc * 0.18 * (1 + bass * 0.15);
+          pts.push([cx + rx * scale, cy + ky * scale * 0.18, rz]);
+        }
+        // Draw knot as connected segments with depth shading
+        for (let i = 0; i < nPts; i++) {
+          const j = (i + 1) % nPts;
+          const depth = (pts[i][2] + pts[j][2]) / 2;
+          const a = 0.3 + (depth + 3) * 0.1 + energy * 0.2;
+          c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${Math.min(a, 0.9)})`;
+          c.lineWidth = 1.5 + (depth + 3) * 0.4 + treble * 1.5;
+          c.beginPath(); c.moveTo(pts[i][0], pts[i][1]); c.lineTo(pts[j][0], pts[j][1]); c.stroke();
+        }
+        // Highlight 3 crossings with pulsing circles
+        const crossingTs = [0, TAU/3, TAU*2/3];
+        for (let ci = 0; ci < 3; ci++) {
+          const tt = crossingTs[ci];
+          const [kx, ky, kz] = trefoil(tt);
+          const cosR = Math.cos(angle * 0.5), sinR = Math.sin(angle * 0.5);
+          const rx = kx * cosR - kz * sinR;
+          const pulse = 1 + 0.5 * Math.sin(Date.now() * 0.003 + ci * TAU / 3);
+          const r = (5 + beat * 8) * pulse;
+          c.beginPath(); c.arc(cx + rx * sc * 0.18, cy + ky * sc * 0.18, r, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.3 + mid * 0.3})`;
+          c.fill();
+        }
+        c.font = `${Math.max(14, h*0.025)}px monospace`;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.6)`;
+        c.textAlign = 'center';
+        c.fillText('Trefoil · crossing number = 3', cx, h * 0.92);
+
+      } else {
+        // Möbius strip: parametric strip with orientation visualization
+        const progress = hasTrack ? playhead / Math.max(duration, 1) : (Date.now() % 55000) / 55000;
+        const nStrips = 80;
+        const stripW = 0.35;
+        const cosR = Math.cos(angle * 0.4), sinR = Math.sin(angle * 0.4);
+        const tilt = 0.6 + Math.sin(angle * 0.2) * 0.15;
+        for (let i = 0; i < nStrips; i++) {
+          const u = (i / nStrips) * TAU;
+          const uNext = ((i + 1) / nStrips) * TAU;
+          for (let side = -1; side <= 1; side += 2) {
+            const v = side * stripW;
+            // Möbius parametric: x = (1 + v/2 cos(u/2)) cos(u), y = (1 + v/2 cos(u/2)) sin(u), z = v/2 sin(u/2)
+            const r1 = 1 + v/2 * Math.cos(u/2);
+            const mx = r1 * Math.cos(u);
+            const my = r1 * Math.sin(u);
+            const mz = v/2 * Math.sin(u/2);
+            // Rotate
+            const rx = mx * cosR - mz * sinR;
+            const rz = mx * sinR + mz * cosR;
+            const ry = my * tilt;
+            const scale = sc * 0.8 * (1 + bass * 0.1);
+            const px = cx + rx * scale;
+            const py = cy + ry * scale * 0.5 + rz * scale * 0.3;
+            const depth = rz;
+            const a = 0.15 + (depth + 1.5) * 0.2 + energy * 0.15;
+            const rad = 1.2 + treble * 1.5;
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${Math.min(a, 0.7)})`;
+            c.fillRect(px - rad/2, py - rad/2, rad, rad);
+          }
+        }
+        // Walker position
+        const walkerU = progress * TAU * 2; // two laps
+        const wr = 1; const wmx = wr * Math.cos(walkerU); const wmy = wr * Math.sin(walkerU);
+        const wmz = 0;
+        const wrx = wmx * cosR - wmz * sinR;
+        const wry = wmy * tilt;
+        const wrz = wmx * sinR + wmz * cosR;
+        const wpx = cx + wrx * sc * 0.8; const wpy = cy + wry * sc * 0.4 + wrz * sc * 0.24;
+        const wr2 = 4 + beat * 6 + energy * 3;
+        c.beginPath(); c.arc(wpx, wpy, wr2, 0, TAU);
+        c.fillStyle = `rgba(255,220,120,${0.6 + beat * 0.3})`;
+        c.fill();
+        // Orientation indicator
+        const orientFlip = Math.floor(progress * 2) % 2;
+        c.font = `${Math.max(12, h*0.02)}px monospace`;
+        c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.5)`;
+        c.textAlign = 'center';
+        c.fillText(orientFlip ? 'orientation: reversed' : 'orientation: normal', cx, h * 0.92);
+        c.fillText(`lap ${Math.floor(progress * 2) + 1}/2`, cx, h * 0.96);
+      }
+    }
+    return { draw };
   }
   function createSignalProcessingSketch() {
     // DFT: frequency bins as vertical bars being extracted

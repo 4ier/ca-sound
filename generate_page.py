@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "topo":    (250, "Topology",                   "欧拉示性数的不变量、纽结的交叉数与Reidemeister移动、莫比乌斯带的取向反转。拓扑学——形变下的永恒。"),
     "sig":     (240, "Signal Processing",         "傅里叶分解的频谱剥离、卷积核的音色重塑、小波变换的多尺度追踪。信号处理——用信号处理来声化信号处理。"),
     "comp":    (230, "Compiler Pipeline",        "词法分析的 token 流、语法分析的 AST 生长、代码生成的机器节奏。源码的变形记。"),
     "game":    (220, "Game Theory",              "囚徒困境的合作与背叛、鹰鸽博弈的种群演化、纳什均衡的收敛。博弈论——理性的和声。"),
@@ -35,7 +36,11 @@ SERIES = {
 }
 
 TRACKS = {
-    # Compiler Pipeline
+    # Topology
+    "topo_1_euler_characteristic":     ("topo", "Euler Characteristic",      "五种柏拉图立体依次变形——顶点=FM亮光、棱=中频持续音、面=低频和弦。V-E+F=2 的不变量化为永恒不变的完美五度 drone。"),
+    "topo_2_knot_invariants":          ("topo", "Knot Invariants",           "三叶结的交叉数=3 驱动三拍节奏，Reidemeister 移动（扭、戳、滑）变形纽结拓扑。解结归为纯正弦——零交叉，零复杂度。"),
+    "topo_3_mobius_strip":             ("topo", "Möbius Strip",              "沿莫比乌斯带行走——左右声道随取向缓缓互换，扭转点=三全音+单声道坍缩。两圈后回到原点，立体声对称解决。"),
+    # Signal Processing
     "sig_1_dft_decomposition":         ("sig", "DFT Decomposition",           "复杂音色被逐一拆解为傅里叶分量——谐波从残留中抽出，按频率散布在立体声场。原始声音溶解为光谱。"),
     "sig_2_convolution":               ("sig", "Convolution",                 "脉冲序列遭遇四种卷积核：恒等→低通模糊→共振带通→梳状回声。干声左、湿声右，卷积核即音色。"),
     "sig_3_wavelet_transform":         ("sig", "Wavelet Transform",           "啁啾信号被 12 阶 Morlet 小波分解——低频小波=左声道缓慢脉动，高频小波=右声道细碎微光。时频结构显现。"),
