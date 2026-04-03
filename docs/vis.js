@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchDB = createDatabaseSketch();
   const sketchTopo = createTopologySketch();
   const sketchSignal = createSignalProcessingSketch();
   const sketchCompiler = createCompilerSketch();
@@ -84,6 +85,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    db: sketchDB,
     topo: sketchTopo,
     sig: sketchSignal,
     comp: sketchCompiler,
@@ -537,6 +539,229 @@
     }
     return { resize, draw };
   }
+  function createDatabaseSketch() {
+    let mode = 0;
+    const GOLD_STR = 'rgb(201,168,76)';
+
+    function resize(w, h) {}
+
+    function draw(api) {
+      const { ctx, w, h, dt, ts, audio, intensity, vis, stem, playhead, duration } = api;
+      if (stem.includes('btree')) mode = 0;
+      else if (stem.includes('transaction') || stem.includes('isolation')) mode = 1;
+      else if (stem.includes('mvcc')) mode = 2;
+
+      ctx.fillStyle = '#0c0b0a';
+      ctx.fillRect(0, 0, w, h);
+
+      if (mode === 0) drawBTree(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+      else if (mode === 1) drawTransaction(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+      else drawMVCC(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+    }
+
+    function drawBTree(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const levels = 4;
+      const nodesPerLevel = [1, 4, 12, 32];
+      const levelY = [h * 0.12, h * 0.32, h * 0.55, h * 0.78];
+      const nodeW = 28, nodeH = 16;
+
+      ctx.strokeStyle = rgba(201, 168, 76, 0.15);
+      ctx.lineWidth = 1;
+      for (let lv = 0; lv < levels - 1; lv++) {
+        const pCnt = nodesPerLevel[lv], cCnt = nodesPerLevel[lv + 1];
+        const cPer = Math.floor(cCnt / pCnt);
+        for (let p = 0; p < pCnt; p++) {
+          const px = w * (p + 0.5) / pCnt, py = levelY[lv] + nodeH;
+          for (let c = 0; c < cPer; c++) {
+            const ci = p * cPer + c;
+            if (ci >= cCnt) break;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(w * (ci + 0.5) / cCnt, levelY[lv + 1]);
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (let lv = 0; lv < levels; lv++) {
+        const count = nodesPerLevel[lv], y = levelY[lv];
+        const bright = 1.0 - lv * 0.2;
+        for (let i = 0; i < count; i++) {
+          const x = w * (i + 0.5) / count;
+          const freq = lv === 0 ? audio.treble : lv === 3 ? audio.bass : audio.mid;
+          const glow = freq * intensity * 0.6;
+          const alpha = 0.3 + glow * 0.5 + bright * 0.2;
+
+          ctx.fillStyle = rgba(201, 168, 76, alpha * 0.4);
+          ctx.fillRect(x - nodeW / 2, y, nodeW, nodeH);
+          ctx.strokeStyle = rgba(201, 168, 76, alpha);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x - nodeW / 2, y, nodeW, nodeH);
+
+          const slots = lv === 0 ? 4 : lv === 1 ? 3 : 2;
+          for (let s = 0; s < slots; s++) {
+            const sx = x - nodeW / 2 + 3 + s * (nodeW - 6) / slots;
+            ctx.fillStyle = rgba(201, 168, 76, alpha * 0.8);
+            ctx.fillRect(sx, y + 4, (nodeW - 6) / slots - 2, nodeH - 8);
+          }
+        }
+      }
+
+      const progress = playhead / Math.max(duration, 1);
+      const sLv = Math.floor(progress * 60) % 5;
+      if (sLv < levels) {
+        const count = nodesPerLevel[sLv];
+        const idx = Math.floor((ts / 800) % count);
+        const x = w * (idx + 0.5) / count, y = levelY[sLv];
+        ctx.shadowColor = GOLD_STR;
+        ctx.shadowBlur = 15 + audio.energy * 20;
+        ctx.fillStyle = rgba(201, 168, 76, 0.9);
+        ctx.fillRect(x - nodeW / 2 - 2, y - 2, nodeW + 4, nodeH + 4);
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.fillStyle = rgba(201, 168, 76, (0.15 + audio.bass * 0.3) * 0.3);
+      ctx.fillRect(0, h - 8, w, 8);
+      ctx.font = '10px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.4);
+      ctx.textAlign = 'left';
+      ctx.fillText('B-TREE', 8, h - 14);
+    }
+
+    function drawTransaction(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const laneH = h * 0.22;
+      const laneY = [h * 0.12, h * 0.40, h * 0.68];
+      const labels = ['T1 READ', 'T2 WRITE', 'T3 R/W'];
+      const laneColors = [[180, 200, 220], [201, 168, 76], [170, 150, 100]];
+      const progress = playhead / Math.max(duration, 1);
+
+      for (let i = 0; i < 3; i++) {
+        const [cr, cg, cb] = laneColors[i];
+        const y = laneY[i];
+        ctx.fillStyle = rgba(cr, cg, cb, 0.04);
+        ctx.fillRect(w * 0.05, y, w * 0.9, laneH);
+        ctx.strokeStyle = rgba(cr, cg, cb, 0.15);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(w * 0.05, y, w * 0.9, laneH);
+        ctx.font = '9px monospace';
+        ctx.fillStyle = rgba(cr, cg, cb, 0.5);
+        ctx.textAlign = 'left';
+        ctx.fillText(labels[i], w * 0.06, y + 12);
+
+        const nEv = 8 + i * 3;
+        for (let e = 0; e < nEv; e++) {
+          const ex = w * 0.08 + w * 0.84 * (e / nEv);
+          const ey = y + laneH / 2;
+          const ep = e / nEv;
+          const active = Math.abs(ep - progress) < 0.03;
+          const past = ep < progress;
+          const radius = active ? 5 + audio.energy * 4 : past ? 3 : 2;
+          const alpha = active ? 0.9 : past ? 0.4 : 0.15;
+
+          ctx.beginPath();
+          ctx.arc(ex, ey, radius, 0, Math.PI * 2);
+          if (active) { ctx.shadowColor = `rgb(${cr},${cg},${cb})`; ctx.shadowBlur = 12; }
+          ctx.fillStyle = rgba(cr, cg, cb, alpha);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          if (i >= 1 && e % 3 === 2 && past) {
+            const ok = e % 5 !== 0;
+            ctx.strokeStyle = ok ? rgba(100, 200, 120, 0.5) : rgba(200, 80, 80, 0.5);
+            ctx.lineWidth = 1.5;
+            if (ok) {
+              ctx.beginPath(); ctx.moveTo(ex - 3, ey + 10); ctx.lineTo(ex, ey + 13); ctx.lineTo(ex + 4, ey + 7); ctx.stroke();
+            } else {
+              ctx.beginPath(); ctx.moveTo(ex - 3, ey + 7); ctx.lineTo(ex + 3, ey + 13); ctx.moveTo(ex + 3, ey + 7); ctx.lineTo(ex - 3, ey + 13); ctx.stroke();
+            }
+          }
+        }
+      }
+
+      const conflicts = [0.24, 0.5];
+      for (const cp of conflicts) {
+        if (Math.abs(progress - cp) < 0.04) {
+          const cx = w * 0.08 + w * 0.84 * cp;
+          ctx.strokeStyle = rgba(220, 60, 60, 0.7);
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo(cx, laneY[0]); ctx.lineTo(cx, laneY[1] + laneH); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = '8px monospace'; ctx.fillStyle = rgba(220, 60, 60, 0.6);
+          ctx.textAlign = 'center'; ctx.fillText('CONFLICT', cx, laneY[0] - 4);
+        }
+      }
+
+      const px = w * 0.08 + w * 0.84 * progress;
+      ctx.strokeStyle = rgba(201, 168, 76, 0.3);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px, h * 0.08); ctx.lineTo(px, h * 0.95); ctx.stroke();
+    }
+
+    function drawMVCC(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const nRows = 6, rowH = h * 0.12, startY = h * 0.08;
+      const progress = playhead / Math.max(duration, 1);
+
+      ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      const phases = ['WRITE', 'SNAPSHOT', 'GC', 'VACUUM'];
+      const phaseX = [w * 0.15, w * 0.40, w * 0.65, w * 0.80];
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = rgba(201, 168, 76, (progress > i * 0.25 && progress < (i + 1) * 0.25) ? 0.6 : 0.2);
+        ctx.fillText(phases[i], phaseX[i], h * 0.04);
+      }
+
+      for (let r = 0; r < nRows; r++) {
+        const y = startY + r * (rowH + 6);
+        ctx.font = '8px monospace'; ctx.fillStyle = rgba(201, 168, 76, 0.3);
+        ctx.textAlign = 'right'; ctx.fillText('R' + r, w * 0.04, y + rowH / 2 + 3);
+
+        const maxV = 5;
+        const vis = progress < 0.35 ? Math.floor(progress * 15) : progress < 0.65 ? maxV : Math.max(1, maxV - Math.floor((progress - 0.65) * 12));
+        const actV = Math.min(vis, maxV);
+
+        for (let v = 0; v < maxV; v++) {
+          const vy = y + v * (rowH / maxV), vw = w * 0.85, vx = w * 0.07;
+          const isCur = v === 0, isVis = v < actV;
+          const bright = isCur ? 0.8 : (0.4 - v * 0.07);
+          const alpha = isVis ? bright * (0.3 + audio.energy * 0.3) : 0.03;
+
+          ctx.fillStyle = rgba(201, 168, 76, alpha);
+          ctx.fillRect(vx, vy, vw, rowH / maxV - 1);
+
+          if (isCur && isVis) {
+            ctx.strokeStyle = rgba(201, 168, 76, 0.4 + audio.bass * 0.3);
+            ctx.lineWidth = 1; ctx.strokeRect(vx, vy, vw, rowH / maxV - 1);
+          }
+
+          if (progress > 0.6 && v >= actV && v < maxV) {
+            ctx.strokeStyle = rgba(120, 80, 40, 0.15); ctx.lineWidth = 0.5;
+            for (let lx = vx; lx < vx + vw; lx += 8) {
+              ctx.beginPath(); ctx.moveTo(lx, vy); ctx.lineTo(lx + 4, vy + rowH / maxV - 1); ctx.stroke();
+            }
+          }
+        }
+
+        if (progress > 0.33 && progress < 0.65) {
+          const sx = w * 0.07 + w * 0.85 * ((progress - 0.33) / 0.32);
+          ctx.strokeStyle = rgba(180, 200, 220, 0.4); ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, y + rowH); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      if (Math.abs(progress - 0.76) < 0.02) {
+        ctx.fillStyle = rgba(201, 168, 76, 0.08); ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    function rgba(r, g, b, a) {
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + Math.max(0, Math.min(1, a)).toFixed(3) + ')';
+    }
+
+    return { resize, draw };
+  }
+
   function createTopologySketch() {
     // Topology: Euler characteristic (polyhedra), knot invariants (trefoil), Möbius strip
     // Platonic solids: wireframe vertices + edges, chi=2 invariant display

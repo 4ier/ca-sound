@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "db":      (260, "Database Internals",         "B-Tree 的层级下行、事务隔离的读写冲突、MVCC 的版本堆叠与垃圾回收。数据库——数据持久化的交响。"),
     "topo":    (250, "Topology",                   "欧拉示性数的不变量、纽结的交叉数与Reidemeister移动、莫比乌斯带的取向反转。拓扑学——形变下的永恒。"),
     "sig":     (240, "Signal Processing",         "傅里叶分解的频谱剥离、卷积核的音色重塑、小波变换的多尺度追踪。信号处理——用信号处理来声化信号处理。"),
     "comp":    (230, "Compiler Pipeline",        "词法分析的 token 流、语法分析的 AST 生长、代码生成的机器节奏。源码的变形记。"),
@@ -36,6 +37,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Database Internals
+    "db_1_btree_search":                   ("db", "B-Tree Search",              "搜索键从根到叶逐层下行——根=高亮 FM 明击、中间节点=渐暗比较音、叶=温暖正弦解决和弦。持久存储层 55Hz drone 底衬。"),
+    "db_2_transaction_isolation":           ("db", "Transaction Isolation",      "三个并发事务争夺行锁——读者的纯净正弦(左)、写者的 FM 爆发(右)、脏读的三全音冲突。可串行化=干净的 A major。"),
+    "db_3_mvcc":                            ("db", "MVCC",                       "每行的版本堆叠为泛音层——旧版本=暗淡低次谐波，当前版本=明亮基频。快照读冻结谐波状态，垃圾回收逐一修剪。"),
     # Topology
     "topo_1_euler_characteristic":     ("topo", "Euler Characteristic",      "五种柏拉图立体依次变形——顶点=FM亮光、棱=中频持续音、面=低频和弦。V-E+F=2 的不变量化为永恒不变的完美五度 drone。"),
     "topo_2_knot_invariants":          ("topo", "Knot Invariants",           "三叶结的交叉数=3 驱动三拍节奏，Reidemeister 移动（扭、戳、滑）变形纽结拓扑。解结归为纯正弦——零交叉，零复杂度。"),
