@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchOS = createOSSketch();
   const sketchDB = createDatabaseSketch();
   const sketchTopo = createTopologySketch();
   const sketchSignal = createSignalProcessingSketch();
@@ -85,6 +86,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    os: sketchOS,
     db: sketchDB,
     topo: sketchTopo,
     sig: sketchSignal,
@@ -5788,5 +5790,277 @@
       default: break;
     }
     return [(r * 255) | 0, (g * 255) | 0, (b * 255) | 0];
+  }
+  function createOSSketch() {
+    let mode = 0;
+    const GOLD_STR = 'rgb(201,168,76)';
+
+    function resize(w, h) {}
+
+    function draw(api) {
+      const { ctx, w, h, dt, ts, audio, intensity, vis, stem, playhead, duration } = api;
+      if (stem.includes('scheduler') || stem.includes('process')) mode = 0;
+      else if (stem.includes('page') || stem.includes('replacement')) mode = 1;
+      else if (stem.includes('pipe')) mode = 2;
+
+      ctx.fillStyle = '#0c0b0a';
+      ctx.fillRect(0, 0, w, h);
+
+      if (mode === 0) drawScheduler(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+      else if (mode === 1) drawPageReplace(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+      else drawPipes(ctx, w, h, ts, dt, audio, intensity, playhead, duration);
+    }
+
+    function drawScheduler(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const nProcs = 6;
+      const laneH = h * 0.11;
+      const names = ['init', 'shell', 'daemon', 'worker', 'cron', 'user'];
+      const progress = playhead / Math.max(duration, 1);
+      const timelineW = w * 0.82;
+      const timelineX = w * 0.14;
+
+      for (let i = 0; i < nProcs; i++) {
+        const y = h * 0.08 + i * (laneH + 4);
+        const alpha = 0.04 + audio.energy * 0.03;
+        ctx.fillStyle = rgba(201, 168, 76, alpha);
+        ctx.fillRect(timelineX, y, timelineW, laneH);
+        ctx.strokeStyle = rgba(201, 168, 76, 0.12);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(timelineX, y, timelineW, laneH);
+
+        ctx.font = '9px monospace';
+        ctx.fillStyle = rgba(201, 168, 76, 0.5);
+        ctx.textAlign = 'right';
+        ctx.fillText(names[i].toUpperCase(), timelineX - 6, y + laneH / 2 + 3);
+
+        const quantumW = timelineW / 40;
+        for (let q = 0; q < 40; q++) {
+          if (q % nProcs !== i) continue;
+          const qx = timelineX + q * quantumW;
+          const qProgress = q / 40;
+          const past = qProgress < progress;
+          const active = Math.abs(qProgress - progress) < 0.03;
+
+          let qAlpha = past ? 0.25 : 0.08;
+          if (i === 0 && qProgress > 0.35 && qProgress < 0.65) qAlpha *= 0.2;
+          if (i === 2 && qProgress > 0.65) {
+            const fade = (qProgress - 0.65) / 0.25;
+            qAlpha *= Math.max(0.05, 1 - fade);
+          }
+
+          if (active) {
+            ctx.shadowColor = GOLD_STR;
+            ctx.shadowBlur = 10 + audio.mid * 12;
+            qAlpha = 0.85;
+          }
+
+          ctx.fillStyle = rgba(201, 168, 76, qAlpha);
+          ctx.fillRect(qx + 1, y + 2, quantumW - 2, laneH - 4);
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      const px = timelineX + timelineW * progress;
+      ctx.strokeStyle = rgba(201, 168, 76, 0.5);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px, h * 0.05); ctx.lineTo(px, h * 0.85); ctx.stroke();
+
+      for (let q = 0; q < 40; q++) {
+        const qx = timelineX + q * (timelineW / 40);
+        if (q % nProcs === nProcs - 1) {
+          ctx.strokeStyle = rgba(201, 168, 76, 0.08);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(qx, h * 0.06); ctx.lineTo(qx, h * 0.85); ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = rgba(201, 168, 76, (0.1 + audio.bass * 0.2) * 0.4);
+      ctx.fillRect(0, h - 10, w, 10);
+      ctx.font = '10px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.35);
+      ctx.textAlign = 'left';
+      ctx.fillText('SCHEDULER', 8, h - 16);
+
+      if (progress > 0.35 && progress < 0.65) {
+        ctx.font = '8px monospace';
+        ctx.fillStyle = rgba(220, 80, 80, 0.6);
+        ctx.textAlign = 'center';
+        ctx.fillText('PRIORITY INVERSION', w / 2, h * 0.04);
+      }
+      if (progress > 0.7 && progress < 0.92) {
+        ctx.font = '8px monospace';
+        ctx.fillStyle = rgba(220, 150, 60, 0.5);
+        ctx.textAlign = 'center';
+        ctx.fillText('STARVATION', w / 2, h * 0.04);
+      }
+    }
+
+    function drawPageReplace(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const nFrames = 8;
+      const frameW = w * 0.08;
+      const frameH = h * 0.50;
+      const frameY = h * 0.22;
+      const progress = playhead / Math.max(duration, 1);
+
+      for (let i = 0; i < nFrames; i++) {
+        const x = w * 0.1 + i * (frameW + 6);
+        const occupied = (i / nFrames) < (0.3 + progress * 0.7);
+        const alpha = occupied ? 0.15 + audio.mid * 0.15 : 0.04;
+        ctx.fillStyle = rgba(201, 168, 76, alpha);
+        ctx.fillRect(x, frameY, frameW, frameH);
+        ctx.strokeStyle = rgba(201, 168, 76, 0.2);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, frameY, frameW, frameH);
+
+        if (occupied) {
+          const pageNum = Math.floor((ts / 2000 + i * 3) % 20);
+          ctx.font = '11px monospace';
+          ctx.fillStyle = rgba(201, 168, 76, 0.6);
+          ctx.textAlign = 'center';
+          ctx.fillText('P' + pageNum, x + frameW / 2, frameY + frameH / 2 + 4);
+        }
+
+        const age = ((ts / 1000 + i * 1.3) % 5) / 5;
+        ctx.fillStyle = rgba(201, 168, 76, 0.1 + (1 - age) * 0.2);
+        ctx.fillRect(x, frameY + frameH + 3, frameW * (1 - age), 4);
+      }
+
+      if (progress > 0.35 && progress < 0.7) {
+        const thr = Math.min(1, (progress - 0.35) / 0.15);
+        const nP = Math.floor(thr * 12);
+        for (let p = 0; p < nP; p++) {
+          const ppx = w * 0.1 + Math.sin(ts / 300 + p * 1.7) * w * 0.35 + w * 0.35;
+          const ppy = frameY + Math.cos(ts / 400 + p * 2.1) * frameH * 0.4 + frameH * 0.5;
+          const r = 2 + audio.treble * 3;
+          ctx.beginPath(); ctx.arc(ppx, ppy, r, 0, Math.PI * 2);
+          ctx.fillStyle = rgba(220, 80, 60, 0.3 + audio.flux * 0.4);
+          ctx.fill();
+        }
+        ctx.font = '8px monospace';
+        ctx.fillStyle = rgba(220, 80, 60, 0.6 * thr);
+        ctx.textAlign = 'center';
+        ctx.fillText('THRASHING', w / 2, frameY - 8);
+      }
+
+      const faults = Math.floor(progress * 80);
+      const hits = Math.floor(progress * 120);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.4);
+      ctx.textAlign = 'left';
+      ctx.fillText('FAULTS: ' + faults, w * 0.1, h * 0.12);
+      ctx.fillText('HITS: ' + hits, w * 0.1, h * 0.17);
+      const ratio = hits / Math.max(faults + hits, 1);
+      ctx.fillText('HIT%: ' + (ratio * 100).toFixed(0), w * 0.4, h * 0.12);
+
+      ctx.fillStyle = rgba(201, 168, 76, (0.1 + audio.bass * 0.2) * 0.3);
+      ctx.fillRect(0, h - 8, w, 8);
+      ctx.font = '10px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.35);
+      ctx.textAlign = 'left';
+      ctx.fillText('LRU', 8, h - 14);
+    }
+
+    function drawPipes(ctx, w, h, ts, dt, audio, intensity, playhead, duration) {
+      const nStages = 4;
+      const stageNames = ['cat', 'grep', 'sort', 'wc'];
+      const stageW = w * 0.17;
+      const stageH = h * 0.30;
+      const stageY = h * 0.35;
+      const progress = playhead / Math.max(duration, 1);
+
+      for (let i = 0; i < nStages; i++) {
+        const x = w * 0.06 + i * (stageW + w * 0.04);
+        const stageActive = progress > i * 0.1;
+        const alpha = stageActive ? 0.12 + audio.energy * 0.1 : 0.04;
+        ctx.fillStyle = rgba(201, 168, 76, alpha);
+        ctx.fillRect(x, stageY, stageW, stageH);
+        ctx.strokeStyle = rgba(201, 168, 76, 0.25);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, stageY, stageW, stageH);
+
+        ctx.font = '11px monospace';
+        ctx.fillStyle = rgba(201, 168, 76, 0.6);
+        ctx.textAlign = 'center';
+        ctx.fillText(stageNames[i], x + stageW / 2, stageY + 16);
+
+        if (stageActive) {
+          const nDataPts = 5 - i;
+          for (let d = 0; d < nDataPts; d++) {
+            const dx = x + 8 + ((ts / (600 + i * 200) + d * 0.3) % 1) * (stageW - 16);
+            const dy = stageY + stageH * 0.4 + Math.sin(ts / 500 + d * 2) * stageH * 0.2;
+            const r = 2 + (i === 0 ? audio.bass : i === 3 ? audio.treble : audio.mid) * 2;
+            ctx.beginPath(); ctx.arc(dx, dy, r, 0, Math.PI * 2);
+            ctx.fillStyle = rgba(201, 168, 76, 0.4 + intensity * 0.3);
+            ctx.fill();
+          }
+        }
+
+        if (i < nStages - 1) {
+          const pipeX1 = x + stageW;
+          const pipeX2 = x + stageW + w * 0.04;
+          const pipeY = stageY + stageH / 2;
+          ctx.strokeStyle = rgba(201, 168, 76, 0.2);
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(pipeX1, pipeY); ctx.lineTo(pipeX2, pipeY); ctx.stroke();
+
+          const midX = (pipeX1 + pipeX2) / 2;
+          ctx.beginPath();
+          ctx.moveTo(midX + 4, pipeY);
+          ctx.lineTo(midX - 2, pipeY - 3);
+          ctx.lineTo(midX - 2, pipeY + 3);
+          ctx.closePath();
+          ctx.fillStyle = rgba(201, 168, 76, 0.25 + audio.mid * 0.2);
+          ctx.fill();
+
+          if (i === 0 && audio.flux > 0.3) {
+            const rej_y = pipeY + 15 + Math.sin(ts / 200) * 5;
+            ctx.beginPath(); ctx.arc(midX, rej_y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = rgba(220, 80, 60, 0.5);
+            ctx.fill();
+          }
+        }
+      }
+
+      if (progress > 0.75 && progress < 0.87) {
+        const bpLevel = (progress - 0.75) / 0.12;
+        for (let i = 0; i < 2; i++) {
+          const x = w * 0.06 + i * (stageW + w * 0.04);
+          ctx.fillStyle = rgba(220, 150, 60, bpLevel * 0.15);
+          ctx.fillRect(x, stageY, stageW, stageH);
+        }
+        ctx.font = '8px monospace';
+        ctx.fillStyle = rgba(220, 150, 60, 0.5 * bpLevel);
+        ctx.textAlign = 'center';
+        ctx.fillText('BACKPRESSURE', w / 2, stageY - 8);
+      }
+
+      if (progress > 0.87) {
+        const eofP = (progress - 0.87) / 0.11;
+        const eofStage = Math.floor(eofP * nStages);
+        for (let i = 0; i <= Math.min(eofStage, nStages - 1); i++) {
+          const x = w * 0.06 + i * (stageW + w * 0.04);
+          ctx.fillStyle = rgba(80, 80, 80, 0.3);
+          ctx.fillRect(x, stageY, stageW, stageH);
+          ctx.font = '9px monospace';
+          ctx.fillStyle = rgba(150, 150, 150, 0.4);
+          ctx.textAlign = 'center';
+          ctx.fillText('EOF', x + stageW / 2, stageY + stageH / 2 + 4);
+        }
+      }
+
+      ctx.font = '10px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.3);
+      ctx.textAlign = 'center';
+      ctx.fillText('$ cat | grep | sort | wc', w / 2, h * 0.18);
+
+      ctx.fillStyle = rgba(201, 168, 76, (0.1 + audio.bass * 0.15) * 0.3);
+      ctx.fillRect(0, h - 8, w, 8);
+      ctx.font = '10px monospace';
+      ctx.fillStyle = rgba(201, 168, 76, 0.35);
+      ctx.textAlign = 'left';
+      ctx.fillText('PIPES', 8, h - 14);
+    }
+
+    return { resize, draw };
   }
 })();

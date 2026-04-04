@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "os":      (270, "Operating Systems",           "进程调度的时间片轮转、页面置换的缓存命中与抖动、Unix 管道的数据流变换。操作系统——计算的交响指挥。"),
     "db":      (260, "Database Internals",         "B-Tree 的层级下行、事务隔离的读写冲突、MVCC 的版本堆叠与垃圾回收。数据库——数据持久化的交响。"),
     "topo":    (250, "Topology",                   "欧拉示性数的不变量、纽结的交叉数与Reidemeister移动、莫比乌斯带的取向反转。拓扑学——形变下的永恒。"),
     "sig":     (240, "Signal Processing",         "傅里叶分解的频谱剥离、卷积核的音色重塑、小波变换的多尺度追踪。信号处理——用信号处理来声化信号处理。"),
@@ -37,6 +38,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Operating Systems
+    "os_1_process_scheduler":              ("os", "Process Scheduler",          "6 个进程竞争 CPU——时间片轮转的节奏、优先级反转的沉默、饥饿的渐弱。55Hz 内核 drone 底衬。"),
+    "os_2_page_replacement":               ("os", "Page Replacement",           "LRU 的 8 帧记忆——页面命中的温暖正弦、缺页的 FM 刺耳爆发、抖动时命中率崩溃为混沌。"),
+    "os_3_unix_pipes":                     ("os", "Unix Pipes",                "cat|grep|sort|wc——数据包从宽带噪声到带通滤波到有序琶音到单一汇总音。背压堆积，EOF 从左到右传播。"),
     # Database Internals
     "db_1_btree_search":                   ("db", "B-Tree Search",              "搜索键从根到叶逐层下行——根=高亮 FM 明击、中间节点=渐暗比较音、叶=温暖正弦解决和弦。持久存储层 55Hz drone 底衬。"),
     "db_2_transaction_isolation":           ("db", "Transaction Isolation",      "三个并发事务争夺行锁——读者的纯净正弦(左)、写者的 FM 爆发(右)、脏读的三全音冲突。可串行化=干净的 A major。"),
