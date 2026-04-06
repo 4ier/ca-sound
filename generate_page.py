@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "net":     (280, "Network Protocols",       "TCP 握手的 SYN-ACK 箭头对话、DNS 递归解析的层级穿越、ARP 广播风暴与中毒。网络协议——数据包的旅途。"),
     "os":      (270, "Operating Systems",           "进程调度的时间片轮转、页面置换的缓存命中与抖动、Unix 管道的数据流变换。操作系统——计算的交响指挥。"),
     "db":      (260, "Database Internals",         "B-Tree 的层级下行、事务隔离的读写冲突、MVCC 的版本堆叠与垃圾回收。数据库——数据持久化的交响。"),
     "topo":    (250, "Topology",                   "欧拉示性数的不变量、纽结的交叉数与Reidemeister移动、莫比乌斯带的取向反转。拓扑学——形变下的永恒。"),
@@ -38,6 +39,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Network Protocols
+    "net_1_tcp_handshake":                     ("net", "TCP Handshake",               "SYN 上行扫频→SYN-ACK 下行应答→ACK 解决为完美五度。20 个数据包 D 五声音阶轮转，丢包重传三全音警告。FIN 四步下行归于 D1 drone。"),
+    "net_2_dns_resolution":                    ("net", "DNS Resolution",              "880Hz FM 查询从 client 出发，穿过 resolver→root→TLD→auth 四层递归。缓存命中即时回响，NXDOMAIN 三全音爆发。最终答案绽放为 A major 和弦。"),
+    "net_3_arp_broadcast":                     ("net", "ARP Broadcast",               "660Hz FM 广播涌入 LAN，12 台主机色谱应答。正常发现构建 ARP 表 drone，风暴段密集爆发，攻击者三全音失谐毒化回复后被驱逐。"),
     # Operating Systems
     "os_1_process_scheduler":              ("os", "Process Scheduler",          "6 个进程竞争 CPU——时间片轮转的节奏、优先级反转的沉默、饥饿的渐弱。55Hz 内核 drone 底衬。"),
     "os_2_page_replacement":               ("os", "Page Replacement",           "LRU 的 8 帧记忆——页面命中的温暖正弦、缺页的 FM 刺耳爆发、抖动时命中率崩溃为混沌。"),

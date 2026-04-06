@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchNet = createNetworkSketch();
   const sketchOS = createOSSketch();
   const sketchDB = createDatabaseSketch();
   const sketchTopo = createTopologySketch();
@@ -86,6 +87,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    net: sketchNet,
     os: sketchOS,
     db: sketchDB,
     topo: sketchTopo,
@@ -6062,5 +6064,254 @@
     }
 
     return { resize, draw };
+  }
+
+  function createNetworkSketch() {
+    // Network protocol packets and handshake arrows
+    let packets = [];   // { x, y, tx, ty, progress, color, size }
+    let prevBeat = false;
+    let phaseAcc = 0;
+    const hosts = [];
+    for (let i = 0; i < 12; i++) {
+      const a = -Math.PI / 2 + (i * TAU) / 12;
+      hosts.push({ x: 0.5 + 0.35 * Math.cos(a), y: 0.5 + 0.35 * Math.sin(a), phase: Math.random() * TAU });
+    }
+
+    return {
+      draw(api) {
+        const { ctx: c, w, h, dt, ts, audio, intensity, playhead, duration, stem } = api;
+        const progress = duration > 0 ? playhead / duration : 0;
+        const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+        const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+
+        c.fillStyle = BG;
+        c.fillRect(0, 0, w, h);
+        phaseAcc += dt * (1.5 + bass * 2);
+
+        const isTCP = stem.includes('tcp');
+        const isDNS = stem.includes('dns');
+        const isARP = stem.includes('arp');
+
+        if (isTCP) {
+          // ── TCP Handshake ──
+          // Client on left, Server on right
+          const cx1 = w * 0.18, cx2 = w * 0.82, cy1 = h * 0.5;
+          const clientR = 20 + bass * 12;
+          const serverR = 20 + mid * 12;
+
+          // Vertical timelines
+          c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.12)`;
+          c.lineWidth = 1;
+          c.setLineDash([3, 6]);
+          c.beginPath(); c.moveTo(cx1, h * 0.15); c.lineTo(cx1, h * 0.85); c.stroke();
+          c.beginPath(); c.moveTo(cx2, h * 0.15); c.lineTo(cx2, h * 0.85); c.stroke();
+          c.setLineDash([]);
+
+          // Labels
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.5)`;
+          c.font = '11px monospace'; c.textAlign = 'center';
+          c.fillText('CLIENT', cx1, h * 0.1);
+          c.fillText('SERVER', cx2, h * 0.1);
+
+          // Handshake arrows based on progress
+          const arrows = [];
+          if (progress > 0.05) arrows.push({ y: 0.2, dir: 1, label: 'SYN', alpha: Math.min(1, (progress - 0.05) * 10) });
+          if (progress > 0.15) arrows.push({ y: 0.32, dir: -1, label: 'SYN-ACK', alpha: Math.min(1, (progress - 0.15) * 10) });
+          if (progress > 0.25) arrows.push({ y: 0.44, dir: 1, label: 'ACK', alpha: Math.min(1, (progress - 0.25) * 10) });
+
+          // Data packets
+          const dataStart = 0.35;
+          if (progress > dataStart) {
+            const dataProgress = (progress - dataStart) / (0.75 - dataStart);
+            const numPkts = Math.min(20, Math.floor(dataProgress * 20));
+            for (let i = 0; i < numPkts; i++) {
+              const dir = i % 2 === 0 ? 1 : -1;
+              const yOff = 0.5 + (i / 20) * 0.25;
+              if (yOff < 0.85) arrows.push({ y: yOff, dir, label: dir > 0 ? `D${i >> 1}` : 'ACK', alpha: 0.4 + energy * 0.3 });
+            }
+          }
+
+          // FIN sequence
+          if (progress > 0.82) {
+            arrows.push({ y: 0.78, dir: 1, label: 'FIN', alpha: Math.min(1, (progress - 0.82) * 10) });
+          }
+          if (progress > 0.88) {
+            arrows.push({ y: 0.83, dir: -1, label: 'FIN-ACK', alpha: Math.min(1, (progress - 0.88) * 10) });
+          }
+
+          // Draw arrows
+          for (const arr of arrows) {
+            const fromX = arr.dir > 0 ? cx1 : cx2;
+            const toX = arr.dir > 0 ? cx2 : cx1;
+            const ay = h * arr.y;
+            c.globalAlpha = arr.alpha * (0.5 + energy * 0.5);
+            c.strokeStyle = arr.label === 'FIN' || arr.label === 'FIN-ACK'
+              ? `rgba(200,100,80,${0.6 * arr.alpha})` : `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.6)`;
+            c.lineWidth = 1.5;
+            c.beginPath(); c.moveTo(fromX + 15 * arr.dir, ay); c.lineTo(toX - 15 * arr.dir, ay); c.stroke();
+            // Arrowhead
+            const ax = toX - 15 * arr.dir;
+            c.beginPath();
+            c.moveTo(ax, ay);
+            c.lineTo(ax - 8 * arr.dir, ay - 4);
+            c.lineTo(ax - 8 * arr.dir, ay + 4);
+            c.closePath(); c.fill();
+            // Label
+            c.fillStyle = c.strokeStyle;
+            c.font = '9px monospace'; c.textAlign = 'center';
+            c.fillText(arr.label, (fromX + toX) / 2, ay - 6);
+            c.globalAlpha = 1;
+          }
+
+          // Client/Server nodes
+          c.beginPath(); c.arc(cx1, cy1, clientR, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.3 + bass * 0.4})`; c.fill();
+          c.beginPath(); c.arc(cx2, cy1, serverR, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.3 + mid * 0.4})`; c.fill();
+
+          // State labels
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          const state = progress < 0.25 ? 'HANDSHAKE' : progress < 0.82 ? 'ESTABLISHED' : 'CLOSING';
+          c.fillText(state, 8, h - 14);
+
+        } else if (isDNS) {
+          // ── DNS Resolution ──
+          // Hierarchy: Client → Resolver → Root → TLD → Auth
+          const layers = [
+            { label: 'CLIENT', x: 0.1, y: 0.5 },
+            { label: 'RESOLVER', x: 0.3, y: 0.5 },
+            { label: 'ROOT', x: 0.55, y: 0.2 },
+            { label: 'TLD', x: 0.7, y: 0.4 },
+            { label: 'AUTH', x: 0.85, y: 0.6 }
+          ];
+
+          // Draw connections
+          const edges = [[0,1],[1,2],[1,3],[1,4],[2,3],[3,4]];
+          for (const [a, b] of edges) {
+            const la = layers[a], lb = layers[b];
+            c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.08 + mid * 0.12})`;
+            c.lineWidth = 1;
+            c.beginPath(); c.moveTo(la.x * w, la.y * h); c.lineTo(lb.x * w, lb.y * h); c.stroke();
+          }
+
+          // Draw nodes
+          for (let i = 0; i < layers.length; i++) {
+            const l = layers[i];
+            const r = 14 + (i === 0 ? bass * 10 : i === 4 ? treble * 10 : mid * 6);
+            const brightness = i === 0 ? 0.5 + bass * 0.4 : i === layers.length - 1 ? 0.3 + treble * 0.5 : 0.2 + mid * 0.2;
+            c.beginPath(); c.arc(l.x * w, l.y * h, r, 0, TAU);
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${brightness})`; c.fill();
+            c.fillStyle = BG; c.font = '9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(l.label, l.x * w, l.y * h);
+          }
+
+          // Query/response packets
+          if (beat && !prevBeat) {
+            const queryPath = Math.random() < 0.3 ? [0,1] : Math.random() < 0.5 ? [0,1,2,3,4] : [0,1,3,4];
+            for (let k = 0; k < queryPath.length - 1; k++) {
+              const from = layers[queryPath[k]], to = layers[queryPath[k + 1]];
+              packets.push({ x: from.x * w, y: from.y * h, tx: to.x * w, ty: to.y * h, progress: 0, color: `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.7)`, size: 3 + treble * 4 });
+            }
+          }
+
+          // Cache hit indicator
+          if (progress > 0.3 && progress < 0.6 && Math.sin(phaseAcc * 3) > 0.8) {
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.2 * energy})`;
+            c.font = '10px monospace'; c.textAlign = 'center';
+            c.fillText('CACHE HIT', layers[1].x * w, layers[1].y * h - 25);
+          }
+
+          // NXDOMAIN flash
+          if (progress > 0.6 && progress < 0.7 && flux > 0.3) {
+            c.fillStyle = 'rgba(200,80,60,0.4)';
+            c.font = '11px monospace'; c.textAlign = 'center';
+            c.fillText('NXDOMAIN', w * 0.55, h * 0.85);
+          }
+
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          c.fillText('DNS', 8, h - 14);
+
+        } else {
+          // ── ARP Broadcast ──
+          // 12 hosts in a ring, broadcast waves from center
+          const cx = w / 2, cy = h * 0.48;
+          const ringR = Math.min(w, h) * 0.32;
+
+          // Broadcast pulse waves
+          const numRings = 3;
+          for (let r = 0; r < numRings; r++) {
+            const phase = (phaseAcc * 0.8 + r * 0.7) % 1;
+            const ringRadius = ringR * 0.1 + ringR * 0.9 * phase;
+            c.beginPath(); c.arc(cx, cy, ringRadius, 0, TAU);
+            c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${(1 - phase) * 0.15 * energy})`;
+            c.lineWidth = 1.5; c.stroke();
+          }
+
+          // Draw hosts
+          for (let i = 0; i < 12; i++) {
+            const hx = cx + ringR * Math.cos(hosts[i].phase + (i * TAU) / 12 + Math.sin(ts * 0.3) * 0.02);
+            const hy = cy + ringR * Math.sin(hosts[i].phase + (i * TAU) / 12 + Math.sin(ts * 0.3) * 0.02);
+            const hr = 6 + (i < 3 ? bass : i < 8 ? mid : treble) * 8;
+
+            // Poisoned host
+            const isPoisoned = progress > 0.55 && progress < 0.8 && i === 7;
+
+            c.beginPath(); c.arc(hx, hy, hr, 0, TAU);
+            if (isPoisoned) {
+              c.fillStyle = `rgba(200,80,60,${0.5 + treble * 0.4})`;
+            } else {
+              const hBright = 0.2 + mid * 0.25 + (beat ? 0.2 : 0);
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${hBright})`;
+            }
+            c.fill();
+
+            // Host ID
+            c.fillStyle = BG; c.font = '8px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(`H${i}`, hx, hy);
+          }
+
+          // ARP table build indicator
+          const tableEntries = Math.min(12, Math.floor(progress * 16));
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.3)`;
+          c.font = '9px monospace'; c.textAlign = 'right';
+          for (let i = 0; i < tableEntries; i++) {
+            c.fillText(`H${i} → MAC:${i.toString(16).padStart(2, '0')}`, w - 12, 20 + i * 13);
+          }
+
+          // Center broadcast node
+          const cR = 10 + bass * 15;
+          c.beginPath(); c.arc(cx, cy, cR, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.4 + energy * 0.4})`; c.fill();
+          c.fillStyle = BG; c.font = '9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText('ARP', cx, cy);
+
+          // Poison warning
+          if (progress > 0.55 && progress < 0.8) {
+            c.fillStyle = `rgba(200,80,60,${0.3 + flux * 0.4})`;
+            c.font = '10px monospace'; c.textAlign = 'center';
+            c.fillText('POISON', cx, h - 30);
+          }
+
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          c.fillText('ARP', 8, h - 14);
+        }
+
+        // ── Shared: animate packets ──
+        for (let i = packets.length - 1; i >= 0; i--) {
+          const p = packets[i];
+          p.progress += dt * (2.5 + energy * 2);
+          if (p.progress >= 1) { packets.splice(i, 1); continue; }
+          const px = p.x + (p.tx - p.x) * p.progress;
+          const py = p.y + (p.ty - p.y) * p.progress;
+          c.beginPath(); c.arc(px, py, p.size, 0, TAU);
+          c.fillStyle = p.color; c.fill();
+        }
+
+        prevBeat = beat;
+      }
+    };
   }
 })();
