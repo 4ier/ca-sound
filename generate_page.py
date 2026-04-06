@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "gc":      (290, "Garbage Collection",     "标记-清除的生死判决、引用计数的即时回收与循环泄漏、分代 GC 的晋升与 stop-the-world 停顿。内存管理——沉默的基础设施。"),
     "net":     (280, "Network Protocols",       "TCP 握手的 SYN-ACK 箭头对话、DNS 递归解析的层级穿越、ARP 广播风暴与中毒。网络协议——数据包的旅途。"),
     "os":      (270, "Operating Systems",           "进程调度的时间片轮转、页面置换的缓存命中与抖动、Unix 管道的数据流变换。操作系统——计算的交响指挥。"),
     "db":      (260, "Database Internals",         "B-Tree 的层级下行、事务隔离的读写冲突、MVCC 的版本堆叠与垃圾回收。数据库——数据持久化的交响。"),
@@ -39,6 +40,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Garbage Collection
+    "gc_1_mark_sweep":                         ("gc", "Mark-Sweep",                 "对象图的可达性分析——标记阶段 FM 明亮探针沿引用传播，清除阶段不可达对象发出下行死亡音。三轮 GC 碎片化递增。"),
+    "gc_2_ref_counting":                       ("gc", "Reference Counting",          "引用计数=谐波丰富度：count=1 纯正弦，count=5 丰满泛音。计数归零=即时下行回收扫频。循环引用=三全音 beating 永不解决——内存泄漏即失谐。"),
+    "gc_3_generational":                       ("gc", "Generational GC",             "新生代高频快速分配、幸存者中频、老年代低频稳重。晋升=频率下滑，Minor GC=高频扫掠，Major GC=stop-the-world 沉默后全频爆发。"),
     # Network Protocols
     "net_1_tcp_handshake":                     ("net", "TCP Handshake",               "SYN 上行扫频→SYN-ACK 下行应答→ACK 解决为完美五度。20 个数据包 D 五声音阶轮转，丢包重传三全音警告。FIN 四步下行归于 D1 drone。"),
     "net_2_dns_resolution":                    ("net", "DNS Resolution",              "880Hz FM 查询从 client 出发，穿过 resolver→root→TLD→auth 四层递归。缓存命中即时回响，NXDOMAIN 三全音爆发。最终答案绽放为 A major 和弦。"),

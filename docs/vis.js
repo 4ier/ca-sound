@@ -57,6 +57,7 @@
   let audioCtx = null;
   let analyser = null;
   let outputGain = null;
+  const sketchGC = createGCSketch();
   const sketchNet = createNetworkSketch();
   const sketchOS = createOSSketch();
   const sketchDB = createDatabaseSketch();
@@ -87,6 +88,7 @@
   const sketchCompose = createComposeSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
+    gc: sketchGC,
     net: sketchNet,
     os: sketchOS,
     db: sketchDB,
@@ -6064,6 +6066,215 @@
     }
 
     return { resize, draw };
+  }
+
+  function createGCSketch() {
+    // Garbage collection: mark-sweep graph, ref count bars, generational layers
+    let particles = [];  // { x, y, vx, vy, life, gen }
+    let prevBeat = false;
+    let phaseAcc = 0;
+    const NUM_OBJS = 16;
+    const objs = [];
+    const edges = [];
+    for (let i = 0; i < NUM_OBJS; i++) {
+      objs.push({
+        x: 0.1 + 0.8 * Math.random(),
+        y: 0.15 + 0.65 * Math.random(),
+        alive: true, marked: false, refCount: 1 + Math.floor(Math.random() * 4),
+        gen: i < 8 ? 0 : i < 12 ? 1 : 2  // nursery/survivor/tenured
+      });
+    }
+    for (let i = 0; i < NUM_OBJS; i++) {
+      const numE = 1 + Math.floor(Math.random() * 2);
+      for (let e = 0; e < numE; e++) {
+        const j = Math.floor(Math.random() * NUM_OBJS);
+        if (j !== i) edges.push([i, j]);
+      }
+    }
+
+    return {
+      draw(api) {
+        const { ctx: c, w, h, dt, ts, audio, intensity, playhead, duration, stem } = api;
+        const progress = duration > 0 ? playhead / duration : 0;
+        const bass = audio.bass, mid = audio.mid, treble = audio.treble;
+        const energy = audio.energy, beat = audio.beat, flux = audio.flux;
+
+        c.fillStyle = BG;
+        c.fillRect(0, 0, w, h);
+        phaseAcc += dt * (1 + energy * 2);
+
+        const isMarkSweep = stem.includes('mark');
+        const isRefCount = stem.includes('ref');
+        const isGen = stem.includes('generational');
+
+        if (isMarkSweep) {
+          // ── Mark-Sweep ──
+          // Determine mark progress based on playback
+          const markPhase = progress < 0.45;
+          const sweepPhase = progress >= 0.45 && progress < 0.85;
+          const numMarked = Math.min(NUM_OBJS, Math.floor(progress * NUM_OBJS * 2.5));
+          for (let i = 0; i < NUM_OBJS; i++) {
+            objs[i].marked = i < numMarked;
+            objs[i].alive = markPhase || objs[i].marked || progress > 0.85;
+          }
+
+          // Draw edges
+          for (const [a, b] of edges) {
+            if (!objs[a].alive || !objs[b].alive) continue;
+            const ax = objs[a].x * w, ay = objs[a].y * h;
+            const bx = objs[b].x * w, by = objs[b].y * h;
+            const edgeAlpha = objs[a].marked && objs[b].marked ? 0.2 + mid * 0.15 : 0.05;
+            c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${edgeAlpha})`;
+            c.lineWidth = 1; c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.stroke();
+          }
+
+          // Draw objects
+          for (let i = 0; i < NUM_OBJS; i++) {
+            const ox = objs[i].x * w, oy = objs[i].y * h;
+            const r = 6 + (objs[i].marked ? bass * 6 : 0);
+            if (sweepPhase && !objs[i].marked) {
+              // Dead object: shrinking, dim
+              const fadeT = (progress - 0.45) / 0.4;
+              const deadR = r * Math.max(0, 1 - fadeT * 2);
+              if (deadR > 0.5) {
+                c.beginPath(); c.arc(ox, oy, deadR, 0, TAU);
+                c.fillStyle = `rgba(200,80,60,${0.3 * (1 - fadeT)})`; c.fill();
+              }
+            } else if (objs[i].alive) {
+              c.beginPath(); c.arc(ox, oy, r, 0, TAU);
+              const bright = objs[i].marked ? 0.5 + energy * 0.4 : 0.15 + mid * 0.1;
+              c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${bright})`; c.fill();
+            }
+          }
+
+          // Mark wave front
+          if (markPhase) {
+            const waveX = progress * 2.5 * w;
+            c.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.15 + treble * 0.2})`;
+            c.lineWidth = 2; c.setLineDash([4, 6]);
+            c.beginPath(); c.moveTo(waveX, 0); c.lineTo(waveX, h); c.stroke();
+            c.setLineDash([]);
+          }
+
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          const label = markPhase ? 'MARK' : sweepPhase ? 'SWEEP' : 'COMPACT';
+          c.fillText(label, 8, h - 14);
+
+        } else if (isRefCount) {
+          // ── Reference Counting ──
+          // Vertical bars for each object, height = ref count
+          const barW = (w - 40) / NUM_OBJS;
+          for (let i = 0; i < NUM_OBJS; i++) {
+            const rc = Math.max(0, Math.min(8, objs[i].refCount + Math.floor(Math.sin(phaseAcc + i) * 1.5)));
+            const barH = (rc / 8) * (h * 0.6);
+            const bx = 20 + i * barW;
+            const by = h * 0.8 - barH;
+
+            // Bar
+            const bright = 0.2 + (rc / 8) * 0.5 + mid * 0.2;
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${bright})`;
+            c.fillRect(bx + 2, by, barW - 4, barH);
+
+            // Ref count label
+            c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.5)`;
+            c.font = '9px monospace'; c.textAlign = 'center';
+            c.fillText(rc.toString(), bx + barW / 2, h * 0.84);
+
+            // Zero = dead (red X)
+            if (rc === 0) {
+              c.strokeStyle = 'rgba(200,80,60,0.6)'; c.lineWidth = 2;
+              c.beginPath(); c.moveTo(bx + 4, by - 5); c.lineTo(bx + barW - 4, by + 15); c.stroke();
+              c.beginPath(); c.moveTo(bx + barW - 4, by - 5); c.lineTo(bx + 4, by + 15); c.stroke();
+            }
+          }
+
+          // Cycle leak indicator (tritone beating)
+          if (progress > 0.35 && progress < 0.7) {
+            const leakAlpha = 0.15 + Math.abs(Math.sin(phaseAcc * 5)) * 0.25;
+            c.strokeStyle = `rgba(200,100,60,${leakAlpha})`;
+            c.lineWidth = 2;
+            const lx1 = 20 + 3 * barW + barW / 2, lx2 = 20 + 7 * barW + barW / 2;
+            const ly = h * 0.25;
+            c.beginPath(); c.moveTo(lx1, ly); c.bezierCurveTo(lx1, ly - 30, lx2, ly - 30, lx2, ly); c.stroke();
+            c.fillStyle = `rgba(200,100,60,${leakAlpha * 0.8})`;
+            c.font = '9px monospace'; c.textAlign = 'center';
+            c.fillText('CYCLE', (lx1 + lx2) / 2, ly - 20);
+          }
+
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          c.fillText('REFCOUNT', 8, h - 14);
+
+        } else {
+          // ── Generational GC ──
+          // Three horizontal bands: nursery (top), survivor (mid), tenured (bottom)
+          const bands = [
+            { name: 'NURSERY', y: 0.1, h: 0.22, color: [220, 200, 100] },
+            { name: 'SURVIVOR', y: 0.38, h: 0.22, color: [180, 160, 80] },
+            { name: 'TENURED', y: 0.66, h: 0.22, color: [140, 120, 60] }
+          ];
+
+          for (const band of bands) {
+            const by = band.y * h, bh = band.h * h;
+            c.fillStyle = `rgba(${band.color[0]},${band.color[1]},${band.color[2]},0.04)`;
+            c.fillRect(0, by, w, bh);
+            // Band label
+            c.fillStyle = `rgba(${band.color[0]},${band.color[1]},${band.color[2]},0.3)`;
+            c.font = '9px monospace'; c.textAlign = 'right';
+            c.fillText(band.name, w - 8, by + 14);
+          }
+
+          // Objects as small dots in their generation band
+          for (let i = 0; i < NUM_OBJS; i++) {
+            const band = bands[objs[i].gen];
+            const ox = objs[i].x * w;
+            const oy = (band.y + band.h * 0.5) * h + Math.sin(phaseAcc + i * 1.7) * band.h * h * 0.3;
+            const r = 4 + (objs[i].gen === 0 ? treble : objs[i].gen === 1 ? mid : bass) * 5;
+            c.beginPath(); c.arc(ox, oy, r, 0, TAU);
+            c.fillStyle = `rgba(${band.color[0]},${band.color[1]},${band.color[2]},${0.3 + energy * 0.4})`;
+            c.fill();
+          }
+
+          // Promotion arrows
+          if (beat && !prevBeat) {
+            const fromGen = Math.random() < 0.7 ? 0 : 1;
+            const toGen = fromGen + 1;
+            particles.push({
+              x: Math.random() * w, y: (bands[fromGen].y + bands[fromGen].h) * h,
+              vx: 0, vy: 30 + Math.random() * 20,
+              life: 1, gen: toGen
+            });
+          }
+
+          // Stop-the-world visual
+          const isSTW = (progress > 0.39 && progress < 0.42) || (progress > 0.75 && progress < 0.78);
+          if (isSTW) {
+            c.fillStyle = 'rgba(200,80,60,0.08)';
+            c.fillRect(0, 0, w, h);
+            c.fillStyle = 'rgba(200,80,60,0.4)';
+            c.font = '12px monospace'; c.textAlign = 'center';
+            c.fillText('STOP-THE-WORLD', w / 2, h / 2);
+          }
+
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.4)`;
+          c.font = '10px monospace'; c.textAlign = 'left';
+          c.fillText('GEN-GC', 8, h - 14);
+        }
+
+        // Animate promotion particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.y += p.vy * dt;
+          p.life -= dt * 1.5;
+          if (p.life <= 0) { particles.splice(i, 1); continue; }
+          c.beginPath(); c.arc(p.x, p.y, 3, 0, TAU);
+          c.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${p.life * 0.6})`; c.fill();
+        }
+
+        prevBeat = beat;
+      }
+    };
   }
 
   function createNetworkSketch() {

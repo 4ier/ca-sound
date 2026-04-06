@@ -143,17 +143,51 @@
     Cellular automata, Turing machines, lambda calculus — as sound.<br>
     <em>The automaton is the composer. I just listen.</em>
   </div>
-  <div class="count">89 tracks</div>
+  <div class="count">92 tracks</div>
 </header>
 
 <main class="album">
+
+<section class="side">
+  <div class="side-label">Garbage Collection</div>
+  <div class="side-subtitle">标记-清除的生死判决、引用计数的即时回收与循环泄漏、分代 GC 的晋升与 stop-the-world 停顿。内存管理——沉默的基础设施。</div>
+
+  <div class="track">
+    <div class="track-num">1</div>
+    <div class="track-body">
+      <div class="track-name">Mark-Sweep</div>
+      <div class="track-note">对象图的可达性分析——标记阶段 FM 明亮探针沿引用传播，清除阶段不可达对象发出下行死亡音。三轮 GC 碎片化递增。</div>
+      <audio controls preload="none" data-vis="gc" data-stem="gc_1_mark_sweep" data-duration="55.0" src="audio/gc_1_mark_sweep.mp3"></audio>
+    </div>
+  </div>
+
+  <div class="track">
+    <div class="track-num">2</div>
+    <div class="track-body">
+      <div class="track-name">Reference Counting</div>
+      <div class="track-note">引用计数=谐波丰富度：count=1 纯正弦，count=5 丰满泛音。计数归零=即时下行回收扫频。循环引用=三全音 beating 永不解决——内存泄漏即失谐。</div>
+      <audio controls preload="none" data-vis="gc" data-stem="gc_2_ref_counting" data-duration="50.0" src="audio/gc_2_ref_counting.mp3"></audio>
+    </div>
+  </div>
+
+  <div class="track">
+    <div class="track-num">3</div>
+    <div class="track-body">
+      <div class="track-name">Generational GC</div>
+      <div class="track-note">新生代高频快速分配、幸存者中频、老年代低频稳重。晋升=频率下滑，Minor GC=高频扫掠，Major GC=stop-the-world 沉默后全频爆发。</div>
+      <audio controls preload="none" data-vis="gc" data-stem="gc_3_generational" data-duration="55.0" src="audio/gc_3_generational.mp3"></audio>
+    </div>
+  </div>
+
+</section>
+
 
 <section class="side">
   <div class="side-label">Network Protocols</div>
   <div class="side-subtitle">TCP 握手的 SYN-ACK 箭头对话、DNS 递归解析的层级穿越、ARP 广播风暴与中毒。网络协议——数据包的旅途。</div>
 
   <div class="track">
-    <div class="track-num">1</div>
+    <div class="track-num">4</div>
     <div class="track-body">
       <div class="track-name">TCP Handshake</div>
       <div class="track-note">SYN 上行扫频→SYN-ACK 下行应答→ACK 解决为完美五度。20 个数据包 D 五声音阶轮转，丢包重传三全音警告。FIN 四步下行归于 D1 drone。</div>
@@ -162,7 +196,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">2</div>
+    <div class="track-num">5</div>
     <div class="track-body">
       <div class="track-name">DNS Resolution</div>
       <div class="track-note">880Hz FM 查询从 client 出发，穿过 resolver→root→TLD→auth 四层递归。缓存命中即时回响，NXDOMAIN 三全音爆发。最终答案绽放为 A major 和弦。</div>
@@ -171,7 +205,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">3</div>
+    <div class="track-num">6</div>
     <div class="track-body">
       <div class="track-name">ARP Broadcast</div>
       <div class="track-note">660Hz FM 广播涌入 LAN，12 台主机色谱应答。正常发现构建 ARP 表 drone，风暴段密集爆发，攻击者三全音失谐毒化回复后被驱逐。</div>
@@ -187,7 +221,7 @@
   <div class="side-subtitle">进程调度的时间片轮转、页面置换的缓存命中与抖动、Unix 管道的数据流变换。操作系统——计算的交响指挥。</div>
 
   <div class="track">
-    <div class="track-num">4</div>
+    <div class="track-num">7</div>
     <div class="track-body">
       <div class="track-name">Process Scheduler</div>
       <div class="track-note">6 个进程竞争 CPU——时间片轮转的节奏、优先级反转的沉默、饥饿的渐弱。55Hz 内核 drone 底衬。</div>
@@ -196,7 +230,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">5</div>
+    <div class="track-num">8</div>
     <div class="track-body">
       <div class="track-name">Page Replacement</div>
       <div class="track-note">LRU 的 8 帧记忆——页面命中的温暖正弦、缺页的 FM 刺耳爆发、抖动时命中率崩溃为混沌。</div>
@@ -205,7 +239,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">6</div>
+    <div class="track-num">9</div>
     <div class="track-body">
       <div class="track-name">Unix Pipes</div>
       <div class="track-note">cat|grep|sort|wc——数据包从宽带噪声到带通滤波到有序琶音到单一汇总音。背压堆积，EOF 从左到右传播。</div>
@@ -221,7 +255,7 @@
   <div class="side-subtitle">B-Tree 的层级下行、事务隔离的读写冲突、MVCC 的版本堆叠与垃圾回收。数据库——数据持久化的交响。</div>
 
   <div class="track">
-    <div class="track-num">7</div>
+    <div class="track-num">10</div>
     <div class="track-body">
       <div class="track-name">B-Tree Search</div>
       <div class="track-note">搜索键从根到叶逐层下行——根=高亮 FM 明击、中间节点=渐暗比较音、叶=温暖正弦解决和弦。持久存储层 55Hz drone 底衬。</div>
@@ -230,7 +264,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">8</div>
+    <div class="track-num">11</div>
     <div class="track-body">
       <div class="track-name">Transaction Isolation</div>
       <div class="track-note">三个并发事务争夺行锁——读者的纯净正弦(左)、写者的 FM 爆发(右)、脏读的三全音冲突。可串行化=干净的 A major。</div>
@@ -239,7 +273,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">9</div>
+    <div class="track-num">12</div>
     <div class="track-body">
       <div class="track-name">MVCC</div>
       <div class="track-note">每行的版本堆叠为泛音层——旧版本=暗淡低次谐波，当前版本=明亮基频。快照读冻结谐波状态，垃圾回收逐一修剪。</div>
@@ -255,7 +289,7 @@
   <div class="side-subtitle">欧拉示性数的不变量、纽结的交叉数与Reidemeister移动、莫比乌斯带的取向反转。拓扑学——形变下的永恒。</div>
 
   <div class="track">
-    <div class="track-num">10</div>
+    <div class="track-num">13</div>
     <div class="track-body">
       <div class="track-name">Euler Characteristic</div>
       <div class="track-note">五种柏拉图立体依次变形——顶点=FM亮光、棱=中频持续音、面=低频和弦。V-E+F=2 的不变量化为永恒不变的完美五度 drone。</div>
@@ -264,7 +298,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">11</div>
+    <div class="track-num">14</div>
     <div class="track-body">
       <div class="track-name">Knot Invariants</div>
       <div class="track-note">三叶结的交叉数=3 驱动三拍节奏，Reidemeister 移动（扭、戳、滑）变形纽结拓扑。解结归为纯正弦——零交叉，零复杂度。</div>
@@ -273,7 +307,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">12</div>
+    <div class="track-num">15</div>
     <div class="track-body">
       <div class="track-name">Möbius Strip</div>
       <div class="track-note">沿莫比乌斯带行走——左右声道随取向缓缓互换，扭转点=三全音+单声道坍缩。两圈后回到原点，立体声对称解决。</div>
@@ -289,7 +323,7 @@
   <div class="side-subtitle">傅里叶分解的频谱剥离、卷积核的音色重塑、小波变换的多尺度追踪。信号处理——用信号处理来声化信号处理。</div>
 
   <div class="track">
-    <div class="track-num">13</div>
+    <div class="track-num">16</div>
     <div class="track-body">
       <div class="track-name">DFT Decomposition</div>
       <div class="track-note">复杂音色被逐一拆解为傅里叶分量——谐波从残留中抽出，按频率散布在立体声场。原始声音溶解为光谱。</div>
@@ -298,7 +332,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">14</div>
+    <div class="track-num">17</div>
     <div class="track-body">
       <div class="track-name">Convolution</div>
       <div class="track-note">脉冲序列遭遇四种卷积核：恒等→低通模糊→共振带通→梳状回声。干声左、湿声右，卷积核即音色。</div>
@@ -307,7 +341,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">15</div>
+    <div class="track-num">18</div>
     <div class="track-body">
       <div class="track-name">Wavelet Transform</div>
       <div class="track-note">啁啾信号被 12 阶 Morlet 小波分解——低频小波=左声道缓慢脉动，高频小波=右声道细碎微光。时频结构显现。</div>
@@ -323,7 +357,7 @@
   <div class="side-subtitle">词法分析的 token 流、语法分析的 AST 生长、代码生成的机器节奏。源码的变形记。</div>
 
   <div class="track">
-    <div class="track-num">16</div>
+    <div class="track-num">19</div>
     <div class="track-body">
       <div class="track-name">Lexer</div>
       <div class="track-note">源码字符流化为 token——关键字=铜管 FM，标识符=纯正弦，运算符=打击 click。从左到右的立体声扫描。</div>
@@ -332,7 +366,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">17</div>
+    <div class="track-num">20</div>
     <div class="track-body">
       <div class="track-name">Parser</div>
       <div class="track-note">token 流构建 AST——递归下降的八度下移，非终结符包裹终结符，树自底向上生长为和声塔。</div>
@@ -341,7 +375,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">18</div>
+    <div class="track-num">21</div>
     <div class="track-body">
       <div class="track-name">Code Generation</div>
       <div class="track-note">AST 溶解为机器指令序列——LOAD/STORE/ADD/MUL/JMP 各有音色，寄存器分配即声部分配，4Hz 时钟脉冲贯穿。</div>
@@ -357,7 +391,7 @@
   <div class="side-subtitle">囚徒困境的合作与背叛、鹰鸽博弈的种群演化、纳什均衡的收敛。博弈论——理性的和声。</div>
 
   <div class="track">
-    <div class="track-num">19</div>
+    <div class="track-num">22</div>
     <div class="track-body">
       <div class="track-name">Prisoner&#x27;s Dilemma</div>
       <div class="track-note">5 种经典策略的循环锦标赛——合作=协和音程，背叛=三全音失谐，以牙还牙的胜出化为最终和弦。</div>
@@ -366,7 +400,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">20</div>
+    <div class="track-num">23</div>
     <div class="track-body">
       <div class="track-name">Evolutionary Stable Strategy</div>
       <div class="track-note">鹰与鸽的种群博弈——鹰鹰搏斗的代价、鸽鸽分享的柔和、种群比例向 ESS 均衡点漂移。</div>
@@ -375,7 +409,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">21</div>
+    <div class="track-num">24</div>
     <div class="track-body">
       <div class="track-name">Nash Equilibrium</div>
       <div class="track-note">两个玩家在 5×5 收益矩阵中寻路——最佳回应动态逐步收敛，纳什均衡=完美五度的 C4+G4。</div>
@@ -391,7 +425,7 @@
   <div class="side-subtitle">Raft 共识的心跳与分裂、Gossip 协议的指数蔓延、向量时钟的因果多声部。分布式系统——协调即和声。</div>
 
   <div class="track">
-    <div class="track-num">22</div>
+    <div class="track-num">25</div>
     <div class="track-body">
       <div class="track-name">Raft Consensus</div>
       <div class="track-note">5 节点集群的选举、心跳、网络分区与脑裂——两个 leader 共存的不谐和，最终愈合为统一心跳。</div>
@@ -400,7 +434,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">23</div>
+    <div class="track-num">26</div>
     <div class="track-body">
       <div class="track-name">Gossip Protocol</div>
       <div class="track-note">7 节点环形拓扑的流行病传播——一个谣言指数蔓延，S 曲线收敛为全体合唱。</div>
@@ -409,7 +443,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">24</div>
+    <div class="track-num">27</div>
     <div class="track-body">
       <div class="track-name">Vector Clocks</div>
       <div class="track-note">4 个进程各自的时钟频率形成复合节奏——消息传递同步时钟，因果链成为旋律序列。</div>
@@ -425,7 +459,7 @@
   <div class="side-subtitle">函子的结构保持、自然变换的路径无关、单子的不确定性链。范畴论——数学的数学。</div>
 
   <div class="track">
-    <div class="track-num">25</div>
+    <div class="track-num">28</div>
     <div class="track-body">
       <div class="track-name">Functor</div>
       <div class="track-note">两个范畴之间的结构保持映射——C 的旋律在 D 中重生，形态改变但关系不变。</div>
@@ -434,7 +468,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">26</div>
+    <div class="track-num">29</div>
     <div class="track-body">
       <div class="track-name">Natural Transformation</div>
       <div class="track-note">函子之间的态射——F 到 G 的每个分量平滑变形，自然性方块的两条路径殊途同归。</div>
@@ -443,7 +477,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">27</div>
+    <div class="track-num">30</div>
     <div class="track-body">
       <div class="track-name">Monad</div>
       <div class="track-note">Maybe 单子：纯净音符被不确定性包裹，Kleisli 链中 Nothing 吞噬一切，Join 将嵌套坍缩。</div>
@@ -459,7 +493,7 @@
   <div class="side-subtitle">类型推断的和声收敛、子类型格的层级共鸣、Curry-Howard 的证明即程序。类型不是约束——是结构。</div>
 
   <div class="track">
-    <div class="track-num">28</div>
+    <div class="track-num">31</div>
     <div class="track-body">
       <div class="track-name">Hindley-Milner Inference</div>
       <div class="track-note">5 个类型变量从不确定的频率漂移中逐一被约束统一——推断即收敛，principal type 即终和弦。</div>
@@ -468,7 +502,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">29</div>
+    <div class="track-num">32</div>
     <div class="track-body">
       <div class="track-name">Subtype Lattice</div>
       <div class="track-note">从 Top（所有泛音）到 Bottom（沉默），子类型继承父类的谐波 DNA，添加自己的音色人格。</div>
@@ -477,7 +511,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">30</div>
+    <div class="track-num">33</div>
     <div class="track-body">
       <div class="track-name">Curry-Howard</div>
       <div class="track-note">合取=双证明和弦，蕴涵=FM 变换传递，析取=双路径收敛。证明完成时和声解决。</div>
@@ -493,7 +527,7 @@
   <div class="side-subtitle">反向传播的梯度回声、激活函数的音色变形、权重空间的收敛之旅。学习即是趋向和谐。</div>
 
   <div class="track">
-    <div class="track-num">31</div>
+    <div class="track-num">34</div>
     <div class="track-body">
       <div class="track-name">Backpropagation</div>
       <div class="track-note">前向传播逐层叠加泛音，反向传播以 FM 回声传递梯度。损失函数从三全音收敛为完美五度。</div>
@@ -502,7 +536,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">32</div>
+    <div class="track-num">35</div>
     <div class="track-body">
       <div class="track-name">Activation Functions</div>
       <div class="track-note">同一输入信号经过 sigmoid/ReLU/tanh/softmax 四种变形——压缩、截断、饱和、概率竞争。</div>
@@ -511,7 +545,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">33</div>
+    <div class="track-num">36</div>
     <div class="track-body">
       <div class="track-name">Weight Space</div>
       <div class="track-note">200 步训练轨迹穿越损失地形——随机初始化的噪声云、鞍点的振荡、局部最小的错误和弦、最终收敛为 D minor。</div>
@@ -527,7 +561,7 @@
   <div class="side-subtitle">叠加态的和声、纠缠的立体声关联、量子行走的干涉条纹。量子世界不是比喻——它本身就是波。</div>
 
   <div class="track">
-    <div class="track-num">34</div>
+    <div class="track-num">37</div>
     <div class="track-body">
       <div class="track-name">Superposition</div>
       <div class="track-note">|0⟩=220Hz, |1⟩=330Hz——完美五度。Hadamard 门让两个频率共存，测量让一个永远消失。</div>
@@ -536,7 +570,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">35</div>
+    <div class="track-num">38</div>
     <div class="track-body">
       <div class="track-name">Entanglement</div>
       <div class="track-note">Bell 态：左右声道完美关联。测量一个，另一个瞬间坍缩——距离无关。</div>
@@ -545,7 +579,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">36</div>
+    <div class="track-num">39</div>
     <div class="track-body">
       <div class="track-name">Quantum Walk</div>
       <div class="track-note">左耳经典随机游走（高斯弥散），右耳量子游走（干涉尖峰）。同一条路，两种物理。</div>
@@ -561,7 +595,7 @@
   <div class="side-subtitle">梯度下降的耐心寻路、模拟退火从混沌到结晶、遗传算法的群体进化。最优解的声音肖像。</div>
 
   <div class="track">
-    <div class="track-num">37</div>
+    <div class="track-num">40</div>
     <div class="track-body">
       <div class="track-name">Gradient Descent</div>
       <div class="track-note">8 个粒子在 Rastrigin 地形上寻路——被困局部最小的持续失谐，找到全局最优的收敛为纯净和弦。</div>
@@ -570,7 +604,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">38</div>
+    <div class="track-num">41</div>
     <div class="track-body">
       <div class="track-name">Simulated Annealing</div>
       <div class="track-note">高温时频率狂跳，冷却中逐渐收窄，偶尔的上坡接受如最后的叛逆。结晶为 A major。</div>
@@ -579,7 +613,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">39</div>
+    <div class="track-num">42</div>
     <div class="track-body">
       <div class="track-name">Genetic Algorithm</div>
       <div class="track-note">20 个有机体向目标旋律进化——初始混沌，交叉重组，突变火花，最终群体齐声唱出 D minor 五声音阶。</div>
@@ -595,7 +629,7 @@
   <div class="side-subtitle">一次性密码本的溶解、雪崩效应的突变、Diffie-Hellman 的秘密收敛。数学守护隐私。</div>
 
   <div class="track">
-    <div class="track-num">40</div>
+    <div class="track-num">43</div>
     <div class="track-body">
       <div class="track-name">One-Time Pad</div>
       <div class="track-note">明文旋律被随机密钥 XOR 溶解——从清晰到噪声，信息论的完美保密。</div>
@@ -604,7 +638,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">41</div>
+    <div class="track-num">44</div>
     <div class="track-body">
       <div class="track-name">Hash Avalanche</div>
       <div class="track-note">翻转一个 bit，SHA-256 输出面目全非。左声道=原始，右声道=雪崩后的异世界。</div>
@@ -613,7 +647,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">42</div>
+    <div class="track-num">45</div>
     <div class="track-body">
       <div class="track-name">Diffie-Hellman</div>
       <div class="track-note">Alice 和 Bob 各持私密旋律，经公开通道交换后收敛为同一和弦——共享秘密。</div>
@@ -629,7 +663,7 @@
   <div class="side-subtitle">死锁的冻结、竞态的漂移、互斥的心跳。并发不是混乱——是受约束的多声部。</div>
 
   <div class="track">
-    <div class="track-num">43</div>
+    <div class="track-num">46</div>
     <div class="track-body">
       <div class="track-name">Dining Philosophers</div>
       <div class="track-note">5 位哲学家争夺叉子——进食的丰满和声、饥饿的颤音、死锁的冻结沉默。</div>
@@ -638,7 +672,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">44</div>
+    <div class="track-num">47</div>
     <div class="track-body">
       <div class="track-name">Race Condition</div>
       <div class="track-note">两个线程竞争共享变量——冲突时音高漂移，失谐是错误的声音。</div>
@@ -647,7 +681,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">45</div>
+    <div class="track-num">48</div>
     <div class="track-body">
       <div class="track-name">Mutex Heartbeats</div>
       <div class="track-note">互斥锁下的独奏轮转——等待者的心跳脉冲，持锁者的丰满声线。</div>
@@ -663,7 +697,7 @@
   <div class="side-subtitle">Chomsky 层级的声学肖像——有限自动机的判定、文法的分形生长、下推自动机的栈深记忆。</div>
 
   <div class="track">
-    <div class="track-num">46</div>
+    <div class="track-num">49</div>
     <div class="track-body">
       <div class="track-name">Finite Automaton</div>
       <div class="track-note">DFA 判定二进制可被 3 整除——接受态和弦明亮，拒绝态嗡鸣短促。</div>
@@ -672,7 +706,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">47</div>
+    <div class="track-num">50</div>
     <div class="track-body">
       <div class="track-name">Context-Free Grammar</div>
       <div class="track-note">L-system 文法的分形生长——深度决定音域，分支决定立体声。</div>
@@ -681,7 +715,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">48</div>
+    <div class="track-num">51</div>
     <div class="track-body">
       <div class="track-name">Pushdown Automaton</div>
       <div class="track-note">匹配嵌套括号的下推自动机——push 升高，pop 回落，栈深成低频 drone。</div>
@@ -697,7 +731,7 @@
   <div class="side-subtitle">素数、筛法、模运算。数论的节奏藏在余数里。</div>
 
   <div class="track">
-    <div class="track-num">49</div>
+    <div class="track-num">52</div>
     <div class="track-body">
       <div class="track-name">Sieve of Eratosthenes</div>
       <div class="track-note">古老的筛法化为打击乐团——合数被击落，素数持续鸣响。</div>
@@ -706,7 +740,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">50</div>
+    <div class="track-num">53</div>
     <div class="track-body">
       <div class="track-name">Prime Gaps</div>
       <div class="track-note">相邻素数间的不规则间距——孪生素数急促连击，大间隙戏剧性留白。</div>
@@ -715,7 +749,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">51</div>
+    <div class="track-num">54</div>
     <div class="track-body">
       <div class="track-name">Modular Worlds</div>
       <div class="track-note">mod 2,3,5,7,11,13 的残差类交织为复合节奏——中国剩余定理可听化。</div>
@@ -731,7 +765,7 @@
   <div class="side-subtitle">熵、编码、压缩。信息的骨架如何发声？</div>
 
   <div class="track">
-    <div class="track-num">52</div>
+    <div class="track-num">55</div>
     <div class="track-body">
       <div class="track-name">Entropy Gradient</div>
       <div class="track-note">从纯净到噪声——Shannon 熵作为谐波密度的连续光谱。</div>
@@ -740,7 +774,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">53</div>
+    <div class="track-num">56</div>
     <div class="track-body">
       <div class="track-name">Huffman Tree</div>
       <div class="track-note">字母频率决定音高与时值。常见即明亮简短，罕见即深沉悠长。</div>
@@ -749,7 +783,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">54</div>
+    <div class="track-num">57</div>
     <div class="track-body">
       <div class="track-name">LZ Window</div>
       <div class="track-note">滑动窗口的记忆——新符号是发现，回引是回声。</div>
@@ -765,7 +799,7 @@
   <div class="side-subtitle">同一张图，三种遍历人格。Dijkstra 的耐心、BFS 的波浪、DFS 的执念。</div>
 
   <div class="track">
-    <div class="track-num">55</div>
+    <div class="track-num">58</div>
     <div class="track-body">
       <div class="track-name">Dijkstra&#x27;s Meditation</div>
       <div class="track-note">最短路松弛化为和声沉淀——波前如水滴扩散。</div>
@@ -774,7 +808,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">56</div>
+    <div class="track-num">59</div>
     <div class="track-body">
       <div class="track-name">BFS Waves</div>
       <div class="track-note">广度优先的节奏波浪——同层节点齐声共鸣。</div>
@@ -783,7 +817,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">57</div>
+    <div class="track-num">60</div>
     <div class="track-body">
       <div class="track-name">DFS Descent</div>
       <div class="track-note">深度优先的独奏旋律——潜入深处，回溯攀升。</div>
@@ -799,7 +833,7 @@
   <div class="side-subtitle">同一个问题，三种算法人格。秩序从混沌中涌现，但路径截然不同。</div>
 
   <div class="track">
-    <div class="track-num">58</div>
+    <div class="track-num">61</div>
     <div class="track-body">
       <div class="track-name">Bubble Sort Meditation</div>
       <div class="track-note">耐心的相邻交换——每次只冒泡一步，秩序在涟漪中浮现。</div>
@@ -808,7 +842,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">59</div>
+    <div class="track-num">62</div>
     <div class="track-body">
       <div class="track-name">Quicksort Drama</div>
       <div class="track-note">递归分区的戏剧性——pivot 选定，世界一分为二。</div>
@@ -817,7 +851,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">60</div>
+    <div class="track-num">63</div>
     <div class="track-body">
       <div class="track-name">Merge Sort Counterpoint</div>
       <div class="track-note">归并的双声部对位——两条有序序列交织成一。</div>
@@ -833,7 +867,7 @@
   <div class="side-subtitle">没有音阶，没有和弦，没有 BPM。自动机本身就是音乐。</div>
 
   <div class="track">
-    <div class="track-num">61</div>
+    <div class="track-num">64</div>
     <div class="track-body">
       <div class="track-name">Rule 30 × 110 — Interference</div>
       <div class="track-note">两个 CA 互相调制。</div>
@@ -842,7 +876,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">62</div>
+    <div class="track-num">65</div>
     <div class="track-body">
       <div class="track-name">Rule 110 — Granular</div>
       <div class="track-note">每行 = 一个声音颗粒。</div>
@@ -851,7 +885,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">63</div>
+    <div class="track-num">66</div>
     <div class="track-body">
       <div class="track-name">Rule 30 — Density</div>
       <div class="track-note">列带密度驱动连续频率。</div>
@@ -860,7 +894,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">64</div>
+    <div class="track-num">67</div>
     <div class="track-body">
       <div class="track-name">Rule 30 — Waveform</div>
       <div class="track-note">每行演化 = 一个波形周期。</div>
@@ -869,7 +903,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">65</div>
+    <div class="track-num">68</div>
     <div class="track-body">
       <div class="track-name">Rule 90 — Sierpinski</div>
       <div class="track-note">分形 CA → 分形波形。</div>
@@ -885,7 +919,7 @@
   <div class="side-subtitle">相变临界点、自指怪圈、离散与连续的间隙。</div>
 
   <div class="track">
-    <div class="track-num">66</div>
+    <div class="track-num">69</div>
     <div class="track-body">
       <div class="track-name">Phase Transition</div>
       <div class="track-note">Logistic map r 从 2.8 到 4.0。听秩序崩碎的瞬间。</div>
@@ -894,7 +928,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">67</div>
+    <div class="track-num">70</div>
     <div class="track-body">
       <div class="track-name">Strange Loop</div>
       <div class="track-note">波形的历史决定下一个频率。永不解决，永远几乎。</div>
@@ -903,7 +937,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">68</div>
+    <div class="track-num">71</div>
     <div class="track-body">
       <div class="track-name">The Gap</div>
       <div class="track-note">左耳阶梯逼近，右耳量化残差。离散与连续之间的歌。</div>
@@ -919,7 +953,7 @@
   <div class="side-subtitle">Collatz 猜想：简单的规则，无人能证明的终点。</div>
 
   <div class="track">
-    <div class="track-num">69</div>
+    <div class="track-num">72</div>
     <div class="track-body">
       <div class="track-name">Ensemble</div>
       <div class="track-note">多条 Collatz 轨迹的立体声合奏。</div>
@@ -929,7 +963,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">70</div>
+    <div class="track-num">73</div>
     <div class="track-body">
       <div class="track-name">Journey of 27</div>
       <div class="track-note">数字 27 的 Collatz 旅程——111 步归于 1。</div>
@@ -939,7 +973,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">71</div>
+    <div class="track-num">74</div>
     <div class="track-body">
       <div class="track-name">Density</div>
       <div class="track-note">停机密度的声音肖像。</div>
@@ -956,7 +990,7 @@
   <div class="side-subtitle">图灵机在有限步内能写下多少个 1？</div>
 
   <div class="track">
-    <div class="track-num">72</div>
+    <div class="track-num">75</div>
     <div class="track-body">
       <div class="track-name">Zoo</div>
       <div class="track-note">6 台图灵机并行。Halters 逐一消失。</div>
@@ -965,7 +999,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">73</div>
+    <div class="track-num">76</div>
     <div class="track-body">
       <div class="track-name">BB(2) Portrait</div>
       <div class="track-note">6 步旅程 → 6 个音乐短语。极简主义。</div>
@@ -974,7 +1008,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">74</div>
+    <div class="track-num">77</div>
     <div class="track-body">
       <div class="track-name">The Wall</div>
       <div class="track-note">BB(4) vs 永不停机者。左右声道的对话。</div>
@@ -990,7 +1024,7 @@
   <div class="side-subtitle">函数即声音。应用即泛音。归约即沉默。</div>
 
   <div class="track">
-    <div class="track-num">75</div>
+    <div class="track-num">78</div>
     <div class="track-body">
       <div class="track-name">Church Numerals</div>
       <div class="track-note">数字 0→10，每个 n = n 层谐波叠加。</div>
@@ -999,7 +1033,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">76</div>
+    <div class="track-num">79</div>
     <div class="track-body">
       <div class="track-name">Y Combinator Unfold</div>
       <div class="track-note">不动点自应用展开为黄金比例频率螺旋。</div>
@@ -1008,7 +1042,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">77</div>
+    <div class="track-num">80</div>
     <div class="track-body">
       <div class="track-name">SKI Calculus</div>
       <div class="track-note">S=FM / K=阻尼 / I=正弦，归约轨迹从宽场坍缩到中心。</div>
@@ -1024,7 +1058,7 @@
   <div class="side-subtitle">逃逸、变形、无限缩放。复平面的声音地图。</div>
 
   <div class="track">
-    <div class="track-num">78</div>
+    <div class="track-num">81</div>
     <div class="track-body">
       <div class="track-name">Escape Orbits</div>
       <div class="track-note">逃逸轨道：发散点的频率肖像。</div>
@@ -1033,7 +1067,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">79</div>
+    <div class="track-num">82</div>
     <div class="track-body">
       <div class="track-name">Julia Morphs</div>
       <div class="track-note">Julia 集的形变——参数连续漂移。</div>
@@ -1042,7 +1076,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">80</div>
+    <div class="track-num">83</div>
     <div class="track-body">
       <div class="track-name">Mandelbrot Zoom</div>
       <div class="track-note">无限缩放。每个尺度都有新的声音。</div>
@@ -1058,7 +1092,7 @@
   <div class="side-subtitle">Conway 的零玩家游戏。涌现、振荡、永生。</div>
 
   <div class="track">
-    <div class="track-num">81</div>
+    <div class="track-num">84</div>
     <div class="track-body">
       <div class="track-name">Glider Symphony</div>
       <div class="track-note">滑翔机舰队的交响——周期5的永恒旅行者。</div>
@@ -1067,7 +1101,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">82</div>
+    <div class="track-num">85</div>
     <div class="track-body">
       <div class="track-name">Still Life Chorale</div>
       <div class="track-note">静物的合唱：不变的模式，持续的和声。</div>
@@ -1076,7 +1110,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">83</div>
+    <div class="track-num">86</div>
     <div class="track-body">
       <div class="track-name">Methuselah</div>
       <div class="track-note">从微小初始态爆发的漫长演化。</div>
@@ -1092,7 +1126,7 @@
   <div class="side-subtitle">用人类音乐理论约束 CA 的早期实验。</div>
 
   <div class="track">
-    <div class="track-num">84</div>
+    <div class="track-num">87</div>
     <div class="track-body">
       <div class="track-name">Rule 110 — Constrained</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule110_constrained" src="audio/rule110_constrained.mp3"></audio>
@@ -1100,7 +1134,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">85</div>
+    <div class="track-num">88</div>
     <div class="track-body">
       <div class="track-name">Rule 110 — Direct</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule110_direct" src="audio/rule110_direct.mp3"></audio>
@@ -1108,7 +1142,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">86</div>
+    <div class="track-num">89</div>
     <div class="track-body">
       <div class="track-name">Rule 110 — Modulation</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule110_modulation" src="audio/rule110_modulation.mp3"></audio>
@@ -1116,7 +1150,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">87</div>
+    <div class="track-num">90</div>
     <div class="track-body">
       <div class="track-name">Rule 30 — Constrained</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule30_constrained" src="audio/rule30_constrained.mp3"></audio>
@@ -1124,7 +1158,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">88</div>
+    <div class="track-num">91</div>
     <div class="track-body">
       <div class="track-name">Rule 30 — Direct</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule30_direct" src="audio/rule30_direct.mp3"></audio>
@@ -1132,7 +1166,7 @@
   </div>
 
   <div class="track">
-    <div class="track-num">89</div>
+    <div class="track-num">92</div>
     <div class="track-body">
       <div class="track-name">Rule 30 — Modulation</div>
       <audio controls preload="none" data-vis="rule" data-stem="rule30_modulation" src="audio/rule30_modulation.mp3"></audio>
