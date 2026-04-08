@@ -55,12 +55,37 @@ jobs:
           git add docs/
           git diff --cached --quiet || (git commit -m "update album page [skip ci]" && git push origin HEAD:main)
 
+      - name: Find new files (incremental release)
+        id: diff
+        run: |
+          # List assets from the previous release
+          PREV=$(gh release list --limit 2 --json tagName -q '.[1].tagName // empty')
+          if [ -n "$PREV" ]; then
+            gh release view "$PREV" --json assets -q '.assets[].name' | sort > /tmp/prev_assets.txt
+          else
+            touch /tmp/prev_assets.txt
+          fi
+          # Current output
+          ls output/*.wav output/*.mp4 2>/dev/null | xargs -I{} basename {} | sort > /tmp/cur_assets.txt
+          # New files only
+          comm -23 /tmp/cur_assets.txt /tmp/prev_assets.txt > /tmp/new_assets.txt
+          # Build file list with full paths
+          # Move new files to staging dir
+          mkdir -p /tmp/release_assets
+          while IFS= read -r f; do
+            [ -f "output/$f" ] && cp "output/$f" /tmp/release_assets/
+          done < /tmp/new_assets.txt
+          COUNT=$(ls /tmp/release_assets/ 2>/dev/null | wc -l)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "--- $COUNT new files to upload ---"
+          cat /tmp/new_assets.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            output/*.wav
-            output/*.mp4
+          files: /tmp/release_assets/*
           generate_release_notes: true
 
       - name: Post to Moltbook
