@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "chaos":   (300, "Chaos Theory",           "Lorenz 吸引子的蝴蝶分叉、双摆从有序到混沌的相变、logistic 映射的倍周期级联。混沌理论——确定性系统中的不可预测。"),
     "gc":      (290, "Garbage Collection",     "标记-清除的生死判决、引用计数的即时回收与循环泄漏、分代 GC 的晋升与 stop-the-world 停顿。内存管理——沉默的基础设施。"),
     "net":     (280, "Network Protocols",       "TCP 握手的 SYN-ACK 箭头对话、DNS 递归解析的层级穿越、ARP 广播风暴与中毒。网络协议——数据包的旅途。"),
     "os":      (270, "Operating Systems",           "进程调度的时间片轮转、页面置换的缓存命中与抖动、Unix 管道的数据流变换。操作系统——计算的交响指挥。"),
@@ -41,6 +42,9 @@ SERIES = {
 
 TRACKS = {
     # Garbage Collection
+    "chaos_1_lorenz_attractor":                ("chaos", "Lorenz Attractor",           "经典蝴蝶——两条轨迹从 epsilon 之差开始，x/y/z 映射为频率/立体声/泛音丰富度。初始齐声渐变为独立旋律，分叉时刻 FM 爆发标记。"),
+    "chaos_2_double_pendulum":                  ("chaos", "Double Pendulum",            "两个耦合振荡器：小角度近周期运动=协和音程，能量注入后混沌来临=音程失谐不可预测。角速度→亮度，角度→音高。"),
+    "chaos_3_bifurcation_cascade":               ("chaos", "Bifurcation Cascade",        "Logistic 映射 r=2.5→4.0 的倍周期级联。周期1=单音持续，周期2=完美五度交替，混沌=密集频率簇。周期窗口短暂浮现为协和岛。"),
     "gc_1_mark_sweep":                         ("gc", "Mark-Sweep",                 "对象图的可达性分析——标记阶段 FM 明亮探针沿引用传播，清除阶段不可达对象发出下行死亡音。三轮 GC 碎片化递增。"),
     "gc_2_ref_counting":                       ("gc", "Reference Counting",          "引用计数=谐波丰富度：count=1 纯正弦，count=5 丰满泛音。计数归零=即时下行回收扫频。循环引用=三全音 beating 永不解决——内存泄漏即失谐。"),
     "gc_3_generational":                       ("gc", "Generational GC",             "新生代高频快速分配、幸存者中频、老年代低频稳重。晋升=频率下滑，Minor GC=高频扫掠，Major GC=stop-the-world 沉默后全频爆发。"),

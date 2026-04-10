@@ -86,6 +86,7 @@
   const sketchCat = createCategorySketch();
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
+  const sketchChaos = createChaosSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
     gc: sketchGC,
@@ -115,6 +116,7 @@
     cat: sketchCat,
     dist: sketchDist,
     game: sketchGame,
+    chaos: sketchChaos,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -6521,6 +6523,113 @@
           c.fillStyle = p.color; c.fill();
         }
 
+        prevBeat = beat;
+      }
+    };
+  }
+
+  // ── Chaos Theory ─────────────────────────────────────────────────────────
+  function createChaosSketch() {
+    // Lorenz attractor trajectory + double pendulum + bifurcation diagram
+    const GOLD = [201, 168, 76];
+    const DIM = [80, 70, 50];
+    const trail = [];
+    const maxTrail = 600;
+    let lx = 1, ly = 1, lz = 1;
+    let px1 = 0.3, pw1 = 0, px2 = 0.3, pw2 = 0;
+    let bifR = 2.5, bifX = 0.4;
+    let prevBeat = false;
+    const sigma = 10, rho = 28, beta = 8/3;
+    return {
+      draw(api) {
+        const { ctx, w, h, audio, dt } = api;
+        const beat = audio.beat;
+        ctx.fillStyle = 'rgba(12,11,10,0.12)';
+        ctx.fillRect(0, 0, w, h);
+        const cx = w / 2, cy = h / 2;
+        const stem = api.stem || '';
+
+        if (stem.includes('lorenz') || (!stem.includes('pendulum') && !stem.includes('bifurcation'))) {
+          // Lorenz attractor projection
+          const speed = 0.3 + audio.energy * 1.5;
+          for (let i = 0; i < 8; i++) {
+            const dts = 0.005 * speed;
+            const dx = sigma * (ly - lx) * dts;
+            const dy = (lx * (rho - lz) - ly) * dts;
+            const dz = (lx * ly - beta * lz) * dts;
+            lx += dx; ly += dy; lz += dz;
+          }
+          // Project: x,y -> screen, z -> size
+          const sx = cx + lx * w * 0.012;
+          const sy = cy - (lz - 25) * h * 0.012;
+          const sz = 2 + audio.treble * 4;
+          trail.push({ x: sx, y: sy, s: sz });
+          if (trail.length > maxTrail) trail.shift();
+          // Draw trail
+          for (let i = 0; i < trail.length; i++) {
+            const a = (i / trail.length);
+            const p = trail[i];
+            const r = Math.round(DIM[0] + (GOLD[0] - DIM[0]) * a);
+            const g = Math.round(DIM[1] + (GOLD[1] - DIM[1]) * a);
+            const b = Math.round(DIM[2] + (GOLD[2] - DIM[2]) * a);
+            ctx.fillStyle = `rgba(${r},${g},${b},${0.15 + 0.7 * a})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.s * a, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // Current point bright
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.95)`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sz * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (stem.includes('pendulum')) {
+          // Double pendulum
+          const L = Math.min(w, h) * 0.15;
+          const anchorX = cx, anchorY = cy - h * 0.15;
+          const speed = 0.5 + audio.energy;
+          for (let i = 0; i < 5; i++) {
+            const dts = 0.008 * speed;
+            const delta = px1 - px2;
+            const den = 2 - Math.cos(delta) * Math.cos(delta);
+            const a1 = (Math.sin(delta) * (pw2 * pw2 + pw1 * pw1 * Math.cos(delta)) - 2 * 9.81 * Math.sin(px1) + 9.81 * Math.sin(px2) * Math.cos(delta)) / den;
+            const a2 = (Math.sin(delta) * (-pw1 * pw1 - pw2 * pw2 * Math.cos(delta)) + 2 * 9.81 * Math.sin(px1) * Math.cos(delta) - 2 * 9.81 * Math.sin(px2)) / den;
+            pw1 += a1 * dts; pw2 += a2 * dts;
+            px1 += pw1 * dts; px2 += pw2 * dts;
+          }
+          const x1 = anchorX + L * Math.sin(px1);
+          const y1 = anchorY + L * Math.cos(px1);
+          const x2 = x1 + L * Math.sin(px2);
+          const y2 = y1 + L * Math.cos(px2);
+          // Rods
+          ctx.strokeStyle = `rgba(${DIM[0]},${DIM[1]},${DIM[2]},0.6)`;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(anchorX, anchorY); ctx.lineTo(x1, y1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          // Bobs
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.85)`;
+          ctx.beginPath(); ctx.arc(x1, y1, 5 + audio.bass * 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.95)`;
+          ctx.beginPath(); ctx.arc(x2, y2, 4 + audio.treble * 5, 0, Math.PI * 2); ctx.fill();
+        }
+
+        if (stem.includes('bifurcation')) {
+          // Bifurcation diagram
+          const speed = 0.15 + audio.energy * 0.4;
+          bifR += speed * dt * 0.3;
+          if (bifR > 4.0) bifR = 2.5;
+          for (let i = 0; i < 20; i++) bifX = bifR * bifX * (1 - bifX);
+          const px = (bifR - 2.5) / 1.5 * w;
+          const py = (1 - bifX) * h;
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${0.15 + audio.energy * 0.3})`;
+          ctx.fillRect(px, py, 1.5, 1.5);
+        }
+
+        if (beat && !prevBeat) {
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.06)`;
+          ctx.fillRect(0, 0, w, h);
+        }
         prevBeat = beat;
       }
     };
