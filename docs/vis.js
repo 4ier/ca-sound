@@ -87,6 +87,7 @@
   const sketchRaw = createRawSketch();
   const sketchCompose = createComposeSketch();
   const sketchChaos = createChaosSketch();
+  const sketchStoch = createStochasticSketch();
   const sketchAmbient = createAmbientSketch();
   const sketchMap = {
     gc: sketchGC,
@@ -117,6 +118,7 @@
     dist: sketchDist,
     game: sketchGame,
     chaos: sketchChaos,
+    stoch: sketchStoch,
     raw: sketchRaw,
     rule: sketchCompose
   };
@@ -6628,6 +6630,140 @@
 
         if (beat && !prevBeat) {
           ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.06)`;
+          ctx.fillRect(0, 0, w, h);
+        }
+        prevBeat = beat;
+      }
+    };
+  }
+
+  function createStochasticSketch() {
+    const GOLD = [201, 168, 76];
+    const BG = [12, 11, 10];
+    // Markov chain state
+    let mState = 0;
+    const mPositions = []; // 6 state positions
+    let mHistory = [];
+    // Brownian particles
+    const particles = [];
+    const N_PART = 12;
+    for (let i = 0; i < N_PART; i++) particles.push({ x: 0.5, y: 0.5, vx: 0, vy: 0 });
+    // Monte Carlo
+    const darts = [];
+    let mcPhase = 0;
+    let prevBeat = false;
+    let rng = 0.7123;
+    function rand() { rng = (rng * 9301 + 49297) % 233280; return rng / 233280; }
+
+    return {
+      resize(w, h) {
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          mPositions[i] = { x: w * 0.5 + w * 0.25 * Math.cos(angle), y: h * 0.5 + h * 0.3 * Math.sin(angle) };
+        }
+      },
+      draw(api) {
+        const { ctx, w, h, dt, audio, stem, vis } = api;
+        const beat = audio.beat;
+
+        // Semi-transparent fade
+        ctx.fillStyle = `rgba(${BG[0]},${BG[1]},${BG[2]},${0.08 + audio.energy * 0.05})`;
+        ctx.fillRect(0, 0, w, h);
+
+        if (stem && stem.includes('markov')) {
+          // Markov chain: 6 nodes in circle, transitions as arcs
+          if (mPositions.length === 0) this.resize(w, h);
+          // Transition on beat
+          if (beat && !prevBeat) {
+            const prev = mState;
+            mState = Math.floor(rand() * 6);
+            mHistory.push({ from: prev, to: mState, t: 1.0 });
+            if (mHistory.length > 20) mHistory.shift();
+          }
+          // Draw edges (fading)
+          for (const tr of mHistory) {
+            tr.t -= dt * 0.4;
+            if (tr.t <= 0) continue;
+            const a = mPositions[tr.from], b = mPositions[tr.to];
+            ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${tr.t * 0.5})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+          mHistory = mHistory.filter(t => t.t > 0);
+          // Draw nodes
+          for (let i = 0; i < 6; i++) {
+            const p = mPositions[i];
+            const active = i === mState;
+            const r = active ? 10 + audio.bass * 8 : 5 + audio.mid * 3;
+            ctx.fillStyle = active
+              ? `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.95)`
+              : `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.25)`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
+        if (stem && stem.includes('brownian')) {
+          // Brownian particles random walk
+          for (let i = 0; i < N_PART; i++) {
+            const p = particles[i];
+            p.vx += (rand() - 0.5) * 0.3 * dt;
+            p.vy += (rand() - 0.5) * 0.3 * dt;
+            p.x += p.vx * dt * (1 + audio.energy * 2);
+            p.y += p.vy * dt * (1 + audio.energy * 2);
+            p.x = Math.max(0.05, Math.min(0.95, p.x));
+            p.y = Math.max(0.05, Math.min(0.95, p.y));
+            // Trail
+            const dist = Math.sqrt((p.x - 0.5) ** 2 + (p.y - 0.5) ** 2);
+            const alpha = 0.3 + dist * 1.2;
+            const sz = 2 + audio.treble * 4;
+            ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${Math.min(alpha, 0.9)})`;
+            ctx.beginPath(); ctx.arc(p.x * w, p.y * h, sz, 0, Math.PI * 2); ctx.fill();
+          }
+          // Center reference
+          ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.1)`;
+          ctx.beginPath(); ctx.arc(w * 0.5, h * 0.5, 3, 0, Math.PI * 2); ctx.stroke();
+        }
+
+        if (stem && stem.includes('monte_carlo')) {
+          // Monte Carlo: darts on unit square
+          mcPhase += dt * (0.5 + audio.energy);
+          if (beat && !prevBeat) {
+            for (let i = 0; i < 5; i++) {
+              const dx = rand() * 2 - 1, dy = rand() * 2 - 1;
+              const inside = dx * dx + dy * dy <= 1;
+              darts.push({ x: dx, y: dy, inside, age: 0 });
+            }
+            if (darts.length > 300) darts.splice(0, 10);
+          }
+          // Draw circle outline
+          const cx = w * 0.5, cy = h * 0.5, cr = Math.min(w, h) * 0.4;
+          ctx.strokeStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.15)`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.stroke();
+          // Square
+          ctx.strokeRect(cx - cr, cy - cr, cr * 2, cr * 2);
+          // Darts
+          for (const d of darts) {
+            d.age += dt;
+            const alpha = Math.max(0.05, 0.7 - d.age * 0.1);
+            const px = cx + d.x * cr, py = cy + d.y * cr;
+            if (d.inside) {
+              ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},${alpha})`;
+            } else {
+              ctx.fillStyle = `rgba(120,100,60,${alpha * 0.6})`;
+            }
+            ctx.fillRect(px - 1, py - 1, 2.5, 2.5);
+          }
+          // Pi estimate
+          const hits = darts.filter(d => d.inside).length;
+          const est = darts.length > 0 ? (4 * hits / darts.length).toFixed(4) : '...';
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.6)`;
+          ctx.font = '14px monospace';
+          ctx.fillText(`\u03C0 \u2248 ${est}`, 10, h - 10);
+        }
+
+        if (beat && !prevBeat) {
+          ctx.fillStyle = `rgba(${GOLD[0]},${GOLD[1]},${GOLD[2]},0.04)`;
           ctx.fillRect(0, 0, w, h);
         }
         prevBeat = beat;

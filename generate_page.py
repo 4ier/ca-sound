@@ -8,6 +8,7 @@ TAG = os.environ.get("TAG", "latest")
 # Track metadata: keyed by filename prefix → (series, title, note, order_in_series)
 # Series order: higher number = newer, shown first (新作品在最上面)
 SERIES = {
+    "stoch":   (310, "Stochastic Processes",    "Markov 链的遍历收敛、Brown 运动的粒子扩散、Monte Carlo 投飞镖逼近 π。随机过程——噪声中的结构。"),
     "chaos":   (300, "Chaos Theory",           "Lorenz 吸引子的蝴蝶分叉、双摆从有序到混沌的相变、logistic 映射的倍周期级联。混沌理论——确定性系统中的不可预测。"),
     "gc":      (290, "Garbage Collection",     "标记-清除的生死判决、引用计数的即时回收与循环泄漏、分代 GC 的晋升与 stop-the-world 停顿。内存管理——沉默的基础设施。"),
     "net":     (280, "Network Protocols",       "TCP 握手的 SYN-ACK 箭头对话、DNS 递归解析的层级穿越、ARP 广播风暴与中毒。网络协议——数据包的旅途。"),
@@ -41,6 +42,10 @@ SERIES = {
 }
 
 TRACKS = {
+    # Stochastic Processes
+    "stoch_1_markov_chain":                    ("stoch", "Markov Chain",              "6 态遍历 Markov 链——D 小调五声音阶状态空间，转移=滑音+click，平稳分布随时间涌现为右声道和弦。"),
+    "stoch_2_brownian_motion":                  ("stoch", "Brownian Motion",           "12 个 Brown 粒子从齐唱出发——随机游走使频率发散，RMS 位移如 √t 增长。离群者越响——异常值放大。"),
+    "stoch_3_monte_carlo_pi":                   ("stoch", "Monte Carlo Pi",            "2000 支飞镖估算 π——命中=协和 ping(左)，脱靶=失谐 blip(右)。持续 drone 频率追踪 π 估计值，从狂摆收敛至 314.159Hz。"),
     # Garbage Collection
     "chaos_1_lorenz_attractor":                ("chaos", "Lorenz Attractor",           "经典蝴蝶——两条轨迹从 epsilon 之差开始，x/y/z 映射为频率/立体声/泛音丰富度。初始齐声渐变为独立旋律，分叉时刻 FM 爆发标记。"),
     "chaos_2_double_pendulum":                  ("chaos", "Double Pendulum",            "两个耦合振荡器：小角度近周期运动=协和音程，能量注入后混沌来临=音程失谐不可预测。角速度→亮度，角度→音高。"),
